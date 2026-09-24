@@ -1,0 +1,25 @@
+{
+  "name": "bumper-balls",
+  "version": "1.0.0",
+  "description": "碰碰球大乱斗 - 轻量多人在线派对游戏",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/khaichonggg/Game.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/khaichonggg/Game/issues"
+  },
+  "homepage": "https://github.com/khaichonggg/Game#readme",
+  "dependencies": {
+    "ws": "^8.21.3"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

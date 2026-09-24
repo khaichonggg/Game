@@ -1,0 +1,308 @@
+* {
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+}
+
+html,
+body {
+  margin: 0;
+  height: 100%;
+  overflow: hidden;
+  background: #16132b;
+  color: #fff;
+  font-family: -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  touch-action: none;
+  user-select: none;
+}
+
+canvas {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.screen {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background: rgba(10, 8, 25, 0.55);
+  backdrop-filter: blur(4px);
+}
+
+.hidden {
+  display: none !important;
+}
+
+.card {
+  width: 100%;
+  max-width: 360px;
+  background: #251f47;
+  border: 3px solid #3b3370;
+  border-radius: 20px;
+  padding: 24px;
+  text-align: center;
+  box-shadow: 0 12px 0 #0e0b20;
+}
+
+h1 {
+  margin: 0 0 4px;
+  font-size: 34px;
+  letter-spacing: 2px;
+  color: #ffd23f;
+  text-shadow: 3px 3px 0 #ff5a5f;
+}
+
+h1 span {
+  display: block;
+  color: #3fa7ff;
+  text-shadow: 3px 3px 0 #1b3a6b;
+}
+
+h2 {
+  margin: 8px 0 16px;
+  color: #ffd23f;
+}
+
+.sub {
+  color: #b7b0e0;
+  font-size: 14px;
+  margin: 8px 0 16px;
+}
+
+input {
+  width: 100%;
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 2px solid #3b3370;
+  background: #16132b;
+  color: #fff;
+  font-size: 16px;
+  outline: none;
+  margin-bottom: 12px;
+}
+
+input:focus {
+  border-color: #3fa7ff;
+}
+
+button {
+  width: 100%;
+  padding: 12px;
+  border: none;
+  border-radius: 12px;
+  background: #3b3370;
+  color: #fff;
+  font-size: 16px;
+  font-weight: bold;
+  cursor: pointer;
+  box-shadow: 0 4px 0 #1a1636;
+  transition: transform 0.05s;
+}
+
+button:active {
+  transform: translateY(3px);
+  box-shadow: 0 1px 0 #1a1636;
+}
+
+button.primary {
+  background: #ff5a5f;
+  box-shadow: 0 4px 0 #a8303a;
+  margin-bottom: 12px;
+}
+
+button.small {
+  padding: 8px;
+  font-size: 14px;
+}
+
+.join-row {
+  display: flex;
+  gap: 8px;
+}
+
+.join-row input {
+  text-transform: uppercase;
+  letter-spacing: 4px;
+  text-align: center;
+  margin: 0;
+}
+
+.join-row button {
+  width: 90px;
+  flex-shrink: 0;
+}
+
+.error {
+  color: #ff7b7f;
+  min-height: 1em;
+  font-size: 14px;
+}
+
+.help {
+  font-size: 13px;
+  color: #948cc4;
+  line-height: 1.7;
+  margin-top: 8px;
+}
+
+.room-label {
+  color: #b7b0e0;
+  font-size: 14px;
+}
+
+.room-code {
+  font-size: 48px;
+  font-weight: 900;
+  letter-spacing: 10px;
+  color: #ffd23f;
+  margin: 4px 0 10px;
+}
+
+ul {
+  list-style: none;
+  padding: 0;
+  margin: 16px 0;
+  text-align: left;
+}
+
+li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: #1c1839;
+  margin-bottom: 6px;
+}
+
+.dot {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  border: 2px solid rgba(255, 255, 255, 0.5);
+}
+
+.tag {
+  margin-left: auto;
+  font-size: 12px;
+  color: #ffd23f;
+}
+
+.bot-row {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.trophy {
+  font-size: 64px;
+}
+
+#overHost button + button {
+  margin-top: 0;
+}
+
+/* HUD */
+#hud {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+}
+
+#scoreboard {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  font-size: 14px;
+  background: rgba(20, 16, 40, 0.7);
+  border-radius: 12px;
+  padding: 8px 10px;
+  min-width: 140px;
+}
+
+#scoreboard .row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 3px 0;
+}
+
+#scoreboard .row.out {
+  opacity: 0.4;
+}
+
+#scoreboard .dot {
+  width: 12px;
+  height: 12px;
+}
+
+#scoreboard .pts {
+  margin-left: auto;
+  font-weight: bold;
+  color: #ffd23f;
+}
+
+#banner {
+  position: absolute;
+  top: 18%;
+  left: 0;
+  right: 0;
+  text-align: center;
+  font-size: 44px;
+  font-weight: 900;
+  color: #ffd23f;
+  text-shadow: 3px 3px 0 #ff5a5f, 0 0 20px rgba(0, 0, 0, 0.6);
+  padding: 0 16px;
+}
+
+/* 手机控制 */
+#touchUI {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+}
+
+#stick {
+  position: absolute;
+  width: 130px;
+  height: 130px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.08);
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  left: 30px;
+  bottom: 40px;
+}
+
+#knob {
+  position: absolute;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.35);
+  left: 37px;
+  top: 37px;
+}
+
+#dashBtn {
+  position: absolute;
+  right: 30px;
+  bottom: 50px;
+  width: 100px;
+  height: 100px;
+  border-radius: 50%;
+  background: #ff5a5f;
+  box-shadow: 0 5px 0 #a8303a;
+  font-size: 18px;
+  pointer-events: auto;
+}
+
+#dashBtn.cooling {
+  background: #5a4f8f;
+  box-shadow: 0 5px 0 #2c2654;
+}

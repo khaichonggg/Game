@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+  <title>碰碰球大乱斗</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <canvas id="game"></canvas>
+
+  <!-- 主菜单 -->
+  <div id="menu" class="screen">
+    <div class="card">
+      <h1>碰碰球<span>大乱斗</span></h1>
+      <p class="sub">把朋友撞出场地，成为最后站着的球！</p>
+      <input id="nameInput" maxlength="12" placeholder="你的昵称" />
+      <button id="createBtn" class="primary">创建房间</button>
+      <div class="join-row">
+        <input id="codeInput" maxlength="4" placeholder="房间码" />
+        <button id="joinBtn">加入</button>
+      </div>
+      <p id="menuError" class="error"></p>
+      <div class="help">
+        <b>电脑：</b>WASD / 方向键 移动，空格 冲刺<br />
+        <b>手机：</b>左手拖动摇杆，右下角按钮冲刺
+      </div>
+    </div>
+  </div>
+
+  <!-- 房间大厅 -->
+  <div id="lobby" class="screen hidden">
+    <div class="card">
+      <div class="room-label">房间码</div>
+      <div id="roomCode" class="room-code">----</div>
+      <button id="copyBtn" class="small">复制邀请链接</button>
+      <ul id="playerList"></ul>
+      <div id="hostControls">
+        <div class="bot-row">
+          <button id="addBotBtn" class="small">+ 机器人</button>
+          <button id="removeBotBtn" class="small">- 机器人</button>
+        </div>
+        <button id="startBtn" class="primary">开始游戏</button>
+      </div>
+      <p id="waitHost" class="sub hidden">等待房主开始游戏…</p>
+      <p class="sub">先拿到 <b id="winScoreLabel">5</b> 分的玩家获胜</p>
+    </div>
+  </div>
+
+  <!-- 游戏内 HUD -->
+  <div id="hud" class="hidden">
+    <div id="scoreboard"></div>
+    <div id="banner"></div>
+  </div>
+
+  <!-- 结算 -->
+  <div id="gameOver" class="screen hidden">
+    <div class="card">
+      <div class="trophy">🏆</div>
+      <h2 id="champName"></h2>
+      <ul id="finalList"></ul>
+      <div id="overHost">
+        <button id="againBtn" class="primary">再来一局</button>
+        <button id="lobbyBtn">回到大厅</button>
+      </div>
+      <p id="overWait" class="sub hidden">等待房主操作…</p>
+    </div>
+  </div>
+
+  <!-- 手机控制 -->
+  <div id="touchUI" class="hidden">
+    <div id="stick"><div id="knob"></div></div>
+    <button id="dashBtn">冲刺</button>
+  </div>
+
+  <script src="game.js"></script>
+</body>
+</html>
