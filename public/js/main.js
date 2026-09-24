@@ -214,10 +214,17 @@ const nameOf = (id) => {
   const p = state && state.players.find((q) => q.id === id);
   return p ? p.name : '???';
 };
+// 深色的身体颜色在深色界面上看不清，名字改用浅色
+function readable(hex) {
+  const n = parseInt(String(hex).slice(1), 16);
+  if (Number.isNaN(n)) return '#ffffff';
+  const lum = (0.299 * ((n >> 16) & 255) + 0.587 * ((n >> 8) & 255) + 0.114 * (n & 255)) / 255;
+  return lum < 0.35 ? '#c9c3e8' : hex;
+}
 const colorOf = (id) => {
   const p = state && state.players.find((q) => q.id === id);
   if (!p) return '#ffffff';
-  return state.settings.mode === 'football' ? TEAM_COLORS[p.team] : p.profile.color;
+  return readable(state.settings.mode === 'football' ? TEAM_COLORS[p.team] : p.profile.color);
 };
 const nameTag = (id) => `<b style="color:${esc(colorOf(id))}">${esc(nameOf(id))}</b>`;
 
