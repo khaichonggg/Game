@@ -3,8 +3,11 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
-  <title>碰碰球大乱斗</title>
+  <title>碰碰球大乱斗 3D</title>
   <link rel="stylesheet" href="style.css" />
+  <script type="importmap">
+    { "imports": { "three": "./vendor/three.module.min.js" } }
+  </script>
 </head>
 <body>
   <canvas id="game"></canvas>
@@ -13,7 +16,7 @@
   <div id="menu" class="screen">
     <div class="card">
       <h1>碰碰球<span>大乱斗</span></h1>
-      <p class="sub">把朋友撞出场地，成为最后站着的球！</p>
+      <p class="sub">在岩浆上的浮岛里互相冲撞，成为最后站着的球！</p>
       <input id="nameInput" maxlength="12" placeholder="你的昵称" />
       <button id="createBtn" class="primary">创建房间</button>
       <div class="join-row">
@@ -35,6 +38,13 @@
       <div id="roomCode" class="room-code">----</div>
       <button id="copyBtn" class="small">复制邀请链接</button>
       <ul id="playerList"></ul>
+      <div class="win-row">
+        <span>先拿到</span>
+        <div id="winPicker" class="seg">
+          <button data-v="3">3</button><button data-v="5">5</button><button data-v="7">7</button>
+        </div>
+        <span>分获胜</span>
+      </div>
       <div id="hostControls">
         <div class="bot-row">
           <button id="addBotBtn" class="small">+ 机器人</button>
@@ -43,7 +53,12 @@
         <button id="startBtn" class="primary">开始游戏</button>
       </div>
       <p id="waitHost" class="sub hidden">等待房主开始游戏…</p>
-      <p class="sub">先拿到 <b id="winScoreLabel">5</b> 分的玩家获胜</p>
+      <div class="items-help">
+        <div><i>🍄</i>巨大化：变大变重，横冲直撞</div>
+        <div><i>⚡</i>加速：跑得更快，冲刺冷却减半</div>
+        <div><i>🛡️</i>护盾：几乎推不动，反弹来犯者</div>
+        <div><i>💣</i>炸弹：立刻引爆冲击波，震飞周围所有人</div>
+      </div>
     </div>
   </div>
 
@@ -51,6 +66,8 @@
   <div id="hud" class="hidden">
     <div id="scoreboard"></div>
     <div id="banner"></div>
+    <div id="toast"></div>
+    <div id="effects"></div>
   </div>
 
   <!-- 结算 -->
@@ -73,6 +90,8 @@
     <button id="dashBtn">冲刺</button>
   </div>
 
-  <script src="game.js"></script>
+  <div id="loading">加载中…</div>
+
+  <script type="module" src="game.js"></script>
 </body>
 </html>

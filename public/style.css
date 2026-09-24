@@ -306,3 +306,132 @@ li {
   background: #5a4f8f;
   box-shadow: 0 5px 0 #2c2654;
 }
+
+/* ---------- 3D 版新增 ---------- */
+.screen {
+  background: rgba(10, 8, 25, 0.35);
+  backdrop-filter: blur(2px);
+}
+
+.card {
+  background: rgba(37, 31, 71, 0.92);
+  max-height: calc(100vh - 32px);
+  overflow-y: auto;
+}
+
+.win-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  color: #b7b0e0;
+  font-size: 14px;
+  margin-bottom: 14px;
+}
+
+.seg {
+  display: flex;
+  border-radius: 10px;
+  overflow: hidden;
+  border: 2px solid #3b3370;
+}
+
+.seg button {
+  width: 40px;
+  padding: 6px 0;
+  border-radius: 0;
+  box-shadow: none;
+  background: #1c1839;
+  font-size: 15px;
+}
+
+.seg button.on {
+  background: #ffd23f;
+  color: #251f47;
+}
+
+.seg.locked button {
+  cursor: default;
+}
+
+.items-help {
+  text-align: left;
+  font-size: 13px;
+  color: #b7b0e0;
+  line-height: 1.9;
+  margin-top: 12px;
+  border-top: 1px solid #3b3370;
+  padding-top: 10px;
+}
+
+.items-help i {
+  font-style: normal;
+  display: inline-block;
+  width: 26px;
+}
+
+#toast {
+  position: absolute;
+  top: calc(18% + 64px);
+  left: 0;
+  right: 0;
+  text-align: center;
+  font-size: 22px;
+  font-weight: 900;
+  color: #fff;
+  text-shadow: 2px 2px 0 rgba(0, 0, 0, 0.6);
+  transition: opacity 0.3s;
+  padding: 0 16px;
+}
+
+#effects {
+  position: absolute;
+  bottom: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 8px;
+}
+
+#effects .fx {
+  background: rgba(20, 16, 40, 0.75);
+  border-radius: 12px;
+  padding: 6px 10px;
+  font-size: 15px;
+  font-weight: bold;
+  white-space: nowrap;
+}
+
+.touch #effects {
+  bottom: auto;
+  top: 12px;
+  left: auto;
+  right: 12px;
+  transform: none;
+  flex-direction: column;
+}
+
+#loading {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #16132b;
+  font-size: 18px;
+  color: #b7b0e0;
+}
+
+@media (max-width: 600px) {
+  #banner {
+    font-size: 30px;
+  }
+  #toast {
+    font-size: 17px;
+    top: calc(18% + 80px);
+  }
+  #scoreboard {
+    font-size: 12px;
+    min-width: 120px;
+  }
+}
