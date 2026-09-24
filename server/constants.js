@@ -23,6 +23,7 @@ module.exports = {
   SLIP_TIME: 1.3,
 
   LOBBY_DC_GRACE: 10, // 大厅里掉线多少秒后移出房间
+  HOST_DC_GRACE: 6, // 房主掉线多少秒后自动换房主
   GAME_DC_GRACE: 60, // 游戏中掉线多少秒后移出（期间由机器人托管）
   CHAT_MAX: 50,
   EMOTE_COUNT: 8,

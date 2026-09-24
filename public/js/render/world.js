@@ -237,6 +237,7 @@ function updatePlayers(dt, t, rdt) {
       scale = 30;
       yawTarget = Math.atan2(camera.position.x - tx, camera.position.z - tz) * 0.6;
       speed = 0;
+      v.ch.dizzy = 0; // 展示台 / 领奖台上不晕
       const won = s.phase === 'gameOver' && s.results && (s.results.winners.includes(p.id) || coopWin);
       celebrate = won ? Math.abs(Math.sin(t * 5 + idx)) * 0.7 : Math.abs(Math.sin(t * 2 + idx * 1.3)) * 0.12;
     }
@@ -667,7 +668,7 @@ export function playEvents(events) {
         // 漫画字只给自己的重击和全场最狠的几下，避免满屏都是字
         const now = performance.now();
         const huge = ev.power > 950;
-        if ((local && ev.power > 500) || (huge && now - lastPop > 450)) {
+        if ((local && ev.power > 500 && now - lastPop > 250) || (huge && now - lastPop > 450)) {
           lastPop = now;
           popText(ev.x, 70, ev.y, null, huge ? '#ff5a5f' : '#ffd23f', huge ? 34 : 26);
         }

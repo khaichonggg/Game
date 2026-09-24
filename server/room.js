@@ -169,7 +169,7 @@ class Room {
     p.ws = null;
     p.dc = 0;
     p.afk = this.inGame;
-    if (this.hostId === p.id) this.pickNewHost();
+    // 房主掉线先等几秒（刷新页面很快就回来），超时再交给别人，见 tick()
   }
 
   reconnect(p, ws) {
@@ -658,6 +658,7 @@ class Room {
     for (const p of this.list()) {
       if (p.bot || p.connected) continue;
       p.dc += dt;
+      if (p.id === this.hostId && p.dc > K.HOST_DC_GRACE && p.dc - dt <= K.HOST_DC_GRACE) this.pickNewHost();
       if (p.dc > (this.inGame ? K.GAME_DC_GRACE : K.LOBBY_DC_GRACE)) this.removePlayer(p.id, 'timeout');
     }
     if (this.phase === 'countdown') {

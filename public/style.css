@@ -111,6 +111,8 @@ input {
 
 .section-title {
   display: flex;
+  flex-wrap: wrap;
+  white-space: nowrap;
   align-items: center;
   gap: 6px;
   font-size: 15px;
@@ -880,6 +882,10 @@ body:not([data-quality='high']) .modal {
   flex-direction: column;
 }
 
+.lobby-right {
+  overflow: hidden;
+}
+
 .cards {
   display: grid;
   gap: 8px;
@@ -1008,6 +1014,9 @@ body.is-host .guest-only {
   flex-direction: column;
   gap: 6px;
   margin-bottom: 12px;
+  flex: 0 1 auto;
+  min-height: 110px;
+  overflow-y: auto;
 }
 
 .team-cols {
@@ -1121,6 +1130,7 @@ body.is-host .guest-only {
   display: flex;
   flex-direction: column;
   gap: 6px;
+  flex: 1 0 150px;
   min-height: 150px;
 }
 
@@ -1533,7 +1543,7 @@ body.is-host .guest-only {
 
 .results-table {
   width: min(390px, 36vw);
-  max-height: 46vh;
+  max-height: 62vh;
   overflow-y: auto;
   padding: 10px;
 }
@@ -1838,10 +1848,98 @@ tr.win td {
 }
 
 /* ---------- 窄屏 / 手机 ---------- */
-@media (max-width: 860px) {
+/* 小屏通用（竖屏手机、横屏手机）：HUD 缩小 */
+@media (max-width: 860px), (max-height: 500px) {
   .screen {
     padding: 10px 12px calc(10px + var(--safe-b));
   }
+  .topbar .title {
+    font-size: 20px;
+  }
+  .topbar-spacer {
+    width: 40px;
+  }
+  .lbl {
+    display: none;
+  }
+  .room-name {
+    font-size: 17px;
+  }
+  .room-tag {
+    display: none;
+  }
+  #btnInvite,
+  #btnLeave {
+    padding: 8px 12px;
+    font-size: 14px;
+  }
+  #banner {
+    font-size: 34px;
+  }
+  #banner small {
+    font-size: 16px;
+  }
+  #toast {
+    font-size: 16px;
+    top: calc(22% + 60px);
+  }
+  #scoreboard {
+    font-size: 12px;
+    min-width: 130px;
+    max-width: 170px;
+    padding: 6px 8px;
+  }
+  #scoreboard .row {
+    margin: 1px 0;
+  }
+  #killfeed {
+    top: 70px;
+  }
+  .kf {
+    font-size: 12px;
+  }
+  .hud-pill {
+    font-size: 16px;
+    padding: 4px 12px;
+  }
+  .boss-bar {
+    width: min(360px, 56vw);
+  }
+  .boss-bar .top {
+    font-size: 11px;
+    gap: 6px;
+  }
+  .paint-bar {
+    width: min(320px, 50vw);
+  }
+  .hud-buttons {
+    top: 12px;
+    bottom: auto;
+    right: 12px;
+  }
+  .touch #effects {
+    bottom: auto;
+    top: 64px;
+  }
+  .emote-picker {
+    right: 12px;
+    top: 70px;
+    bottom: auto;
+  }
+  .btn-xl {
+    font-size: 22px;
+  }
+  .btn-lg {
+    font-size: 18px;
+    padding: 12px 18px;
+  }
+  .chip-text small {
+    display: none;
+  }
+}
+
+/* 竖屏手机：上下排列 */
+@media (max-width: 860px) and (orientation: portrait) {
   .menu-body {
     flex-direction: column;
     justify-content: flex-start;
@@ -1868,16 +1966,6 @@ tr.win td {
     max-width: 420px;
     align-self: center;
   }
-  .btn-xl {
-    font-size: 22px;
-  }
-  .btn-lg {
-    font-size: 18px;
-    padding: 12px 18px;
-  }
-  .chip-text small {
-    display: none;
-  }
   .ward-panel {
     top: auto;
     left: 12px;
@@ -1902,28 +1990,15 @@ tr.win td {
     overflow: visible;
     flex-shrink: 0;
   }
+  .lobby-right {
+    order: -1;
+  }
   .lobby-foot .btn-xl {
     min-width: 0;
     flex: 1;
   }
   .ready-info {
     display: none;
-  }
-  .topbar .title {
-    font-size: 20px;
-  }
-  .topbar-spacer {
-    width: 40px;
-  }
-  .room-name {
-    font-size: 17px;
-  }
-  .room-tag {
-    display: none;
-  }
-  #btnInvite {
-    padding: 8px 10px;
-    font-size: 14px;
   }
   .results-body {
     flex-direction: column;
@@ -1942,37 +2017,213 @@ tr.win td {
     width: 100%;
     max-height: 32vh;
   }
-  #banner {
+}
+
+/* 横屏手机：保持左右布局，整体压缩 */
+@media (max-height: 500px) and (orientation: landscape) {
+  .screen {
+    padding: 6px 12px calc(6px + var(--safe-b));
+  }
+  .topbar {
+    min-height: 40px;
+  }
+  .icon-btn {
+    width: 40px;
+    height: 40px;
+    font-size: 18px;
+  }
+  .avatar {
+    width: 34px;
+    height: 34px;
+    font-size: 18px;
+  }
+  .logo-top,
+  .logo-bottom {
+    font-size: 44px;
+  }
+  .logo-tag {
+    margin-top: 10px;
+    font-size: 12px;
+  }
+  .menu-actions {
+    gap: 8px;
+    width: min(320px, 44vw);
+  }
+  .menu-actions .btn small {
+    display: none;
+  }
+  .btn-xl {
+    font-size: 20px;
+    padding: 10px 20px;
+  }
+  .btn-lg {
+    font-size: 16px;
+    padding: 9px 16px;
+  }
+  .join-code input {
+    padding: 8px 10px;
+    font-size: 16px;
+  }
+  .menu-foot {
+    font-size: 11px;
+  }
+  .ward-panel {
+    top: 54px;
+    bottom: 8px;
+    width: min(400px, 52vw);
+    padding: 10px;
+  }
+  .name-row {
+    margin-bottom: 8px;
+  }
+  .tabs {
+    margin-bottom: 8px;
+  }
+  .grid {
+    grid-template-columns: repeat(auto-fill, minmax(72px, 1fr));
+    gap: 6px;
+  }
+  .grid .opt {
+    padding: 6px 2px;
+    font-size: 12px;
+  }
+  .grid .opt .big {
+    font-size: 24px;
+  }
+  .grid .swatch {
+    width: 32px;
+    height: 32px;
+  }
+  .drag-hint {
+    display: none;
+  }
+  .lobby-grid {
+    margin-top: 6px;
+    gap: 10px;
+  }
+  .lobby-left,
+  .lobby-right {
+    width: min(320px, 38vw);
+    padding: 8px 10px;
+  }
+  .section-title {
+    font-size: 13px;
+    margin: 2px 0 6px;
+  }
+  .map-card {
+    height: 48px;
+    padding: 6px 8px;
+  }
+  .map-card small {
+    display: none;
+  }
+  .map-card .ico {
+    font-size: 30px;
+  }
+  .mode-card {
+    padding: 5px 2px;
+  }
+  .mode-card .ico {
+    font-size: 20px;
+  }
+  .mode-card .tag {
+    display: none;
+  }
+  .mode-desc {
+    font-size: 11px;
+    padding: 6px 8px;
+  }
+  .set-row {
+    padding: 5px 2px;
+    font-size: 13px;
+  }
+  .set-row small {
+    display: none;
+  }
+  .player-row {
+    padding: 4px 6px;
+  }
+  .player-row .pname {
+    font-size: 13px;
+  }
+  .chat {
+    min-height: 110px;
+    flex-basis: 110px;
+  }
+  .chat-log {
+    min-height: 60px;
+  }
+  .lobby-foot {
+    margin-top: 6px;
+  }
+  .ready-info {
+    display: none;
+  }
+  .results-title {
     font-size: 34px;
   }
-  #toast {
-    font-size: 16px;
-    top: calc(22% + 60px);
-  }
-  #scoreboard {
+  .results-sub {
     font-size: 12px;
-    min-width: 130px;
-    max-width: 170px;
   }
-  #killfeed {
-    top: 70px;
+  .awards {
+    width: min(220px, 28vw);
+    gap: 4px;
   }
-  .hud-pill {
-    font-size: 16px;
-    padding: 4px 12px;
+  .award {
+    padding: 4px 8px;
   }
-  .hud-buttons {
-    top: 12px;
-    bottom: auto;
-    right: 12px;
+  .award .ico {
+    font-size: 20px;
   }
-  .touch #effects {
-    bottom: auto;
-    top: 120px;
+  .results-table {
+    width: min(340px, 40vw);
+    max-height: 58vh;
+    padding: 6px;
   }
-  .emote-picker {
-    right: 12px;
-    top: 70px;
-    bottom: auto;
+  table {
+    font-size: 12px;
+  }
+  td {
+    padding: 3px 2px;
+  }
+  .results-foot {
+    margin-top: 6px;
+    gap: 8px;
+  }
+  .results-foot .btn {
+    padding: 8px 12px;
+    font-size: 14px;
+  }
+  .rooms-panel,
+  .board-panel,
+  .help-panel {
+    margin-top: 8px;
+    padding: 10px;
+  }
+  .modal-card {
+    padding: 14px;
+  }
+  .qr img {
+    width: 120px;
+    height: 120px;
+  }
+  .big-code {
+    font-size: 34px;
+  }
+  #stick {
+    width: 110px;
+    height: 110px;
+  }
+  #knob {
+    width: 50px;
+    height: 50px;
+    left: 27px;
+    top: 27px;
+  }
+  #dashBtn {
+    width: 90px;
+    height: 90px;
+    bottom: calc(40px + var(--safe-b));
+    right: 30px;
   }
 }
