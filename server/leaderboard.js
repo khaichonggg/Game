@@ -2,17 +2,20 @@
 const fs = require('fs');
 const path = require('path');
 
-const FILE = path.join(__dirname, 'data', 'leaderboard.json');
+// 测试时用 LEADERBOARD_FILE=off 关闭写盘，或者指定别的文件
+const FILE = process.env.LEADERBOARD_FILE || path.join(__dirname, '..', 'data', 'leaderboard.json');
+const DISABLED = FILE === 'off';
 let stats = {};
 let saveTimer = null;
 
 try {
-  stats = JSON.parse(fs.readFileSync(FILE, 'utf8'));
+  if (!DISABLED) stats = JSON.parse(fs.readFileSync(FILE, 'utf8'));
 } catch {
   stats = {};
 }
 
 function save() {
+  if (DISABLED) return;
   clearTimeout(saveTimer);
   saveTimer = setTimeout(() => {
     fs.mkdir(path.dirname(FILE), { recursive: true }, () => {

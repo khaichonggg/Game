@@ -1,0 +1,91 @@
+// 联网集成测试：真实启动服务器，用 WebSocket 客户端走一遍组队流程
+const { spawn } = require('child_process');
+const path = require('path');
+const WebSocket = require('ws');
+const { check, done } = require('./helpers');
+
+const PORT = 3000 + Math.floor(Math.random() * 900) + 50;
+const URL = `ws://127.0.0.1:${PORT}`;
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+function client(joinMsg) {
+  return new Promise((resolve) => {
+    const ws = new WebSocket(URL);
+    const c = { ws, msgs: [], state: null };
+    c.last = (t) => [...c.msgs].reverse().find((m) => m.t === t);
+    c.send = (m) => ws.send(JSON.stringify(m));
+    ws.on('message', (raw) => {
+      const m = JSON.parse(raw);
+      if (m.t === 'state') c.state = m;
+      else c.msgs.push(m);
+    });
+    ws.on('open', () => {
+      c.send({ t: 'join', ...joinMsg });
+      setTimeout(() => resolve(c), 250);
+    });
+  });
+}
+const api = async (p) => (await fetch(`http://127.0.0.1:${PORT}${p}`)).json();
+
+(async () => {
+  const srv = spawn(process.execPath, [path.join(__dirname, '..', 'server.js')], { env: { ...process.env, PORT: String(PORT), LEADERBOARD_FILE: 'off' }, stdio: 'pipe' });
+  let out = '';
+  srv.stdout.on('data', (d) => (out += d));
+  for (let i = 0; i < 40 && !out.includes('已启动'); i++) await sleep(100);
+  try {
+    const info = await api('/api/info');
+    check(Array.isArray(info.lan) && info.port === PORT, `/api/info 返回局域网地址（${info.lan.join(', ') || '无网卡'}）`);
+
+    const a = await client({ room: '', name: '小明', token: 'A', profile: { char: 'cat' }, roomName: '小明的派对' });
+    const code = a.last('joined').code;
+    check(/^[A-Z]{4}$/.test(code), `创建房间得到 4 位房间码 ${code}`);
+    check(a.last('map') && a.last('chatlog'), '进房后收到地图数据和聊天记录');
+    let rooms = await api('/api/rooms');
+    check(rooms.some((r) => r.code === code && r.name === '小明的派对'), '公开房间出现在房间列表里');
+
+    const b = await client({ room: code, name: '小红', token: 'B' });
+    await sleep(100);
+    check(b.state && b.state.players.length === 2, '第二个人用房间码加入');
+
+    const q = await client({ quick: true, name: '路人', token: 'Q' });
+    check(q.last('joined') && q.last('joined').code === code, '快速开始会加入已有的公开房间');
+
+    a.send({ t: 'settings', public: false });
+    await sleep(150);
+    rooms = await api('/api/rooms');
+    check(!rooms.some((r) => r.code === code), '设为私密后不在房间列表里显示');
+
+    // 断线重连：同一个 token 回来还是同一个人
+    const bId = b.last('joined').id;
+    b.ws.terminate();
+    await sleep(200);
+    const b2 = await client({ room: code, name: '小红', token: 'B' });
+    check(b2.last('joined').id === bId, '断线后用同一身份重连，回到原来的位置');
+    // 同一身份开第二个页面：旧页面被挤下线
+    const b3 = await client({ room: code, name: '小红', token: 'B' });
+    await sleep(100);
+    check(b2.last('kicked') && b3.last('joined').id === bId, '同一身份在新页面进入时，旧页面被挤下线');
+
+    a.send({ t: 'kick', id: q.last('joined').id });
+    await sleep(150);
+    check(q.last('kicked'), '房主踢人后对方收到通知');
+    const q2 = await client({ room: code, name: '路人', token: 'Q' });
+    check(q2.last('error') && !q2.last('joined'), '被踢的人不能马上用同一身份回来');
+
+    a.send({ t: 'host', id: bId });
+    await sleep(150);
+    check(b3.state.hostId === bId, '房主转让在所有客户端生效');
+
+    const bad = await client({ room: 'ZZZZ', name: 'x', token: 'X' });
+    check(bad.last('error'), '房间码不存在时提示错误');
+
+    b3.send({ t: 'ping', c: 123 });
+    await sleep(100);
+    check(b3.last('pong') && b3.last('pong').c === 123, '延迟测量 ping/pong');
+
+    for (const c of [a, b2, b3, q, q2, bad]) c.ws.close();
+  } finally {
+    srv.kill();
+  }
+  done();
+})();
