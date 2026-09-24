@@ -435,3 +435,181 @@ li {
     min-width: 120px;
   }
 }
+
+/* ---------- 地图 / 模式 / 排行榜 ---------- */
+.card.wide {
+  max-width: 460px;
+}
+
+.lobby-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.lobby-head .room-code {
+  font-size: 40px;
+  margin: 0;
+}
+
+.lobby-head button {
+  width: auto;
+  padding: 8px 12px;
+}
+
+.section-title {
+  text-align: left;
+  color: #b7b0e0;
+  font-size: 13px;
+  margin: 12px 0 6px;
+  font-weight: bold;
+}
+
+.picker {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+}
+
+.picker .opt {
+  text-align: left;
+  padding: 8px 10px;
+  border-radius: 12px;
+  background: #1c1839;
+  border: 2px solid transparent;
+  box-shadow: none;
+  font-weight: normal;
+  font-size: 14px;
+  line-height: 1.3;
+}
+
+.picker .opt b {
+  display: block;
+  font-size: 15px;
+}
+
+.picker .opt small {
+  color: #948cc4;
+  font-size: 11px;
+}
+
+.picker .opt.on {
+  border-color: #ffd23f;
+  background: #2e2760;
+}
+
+.picker.locked .opt {
+  cursor: default;
+}
+
+.seg button {
+  width: auto;
+  min-width: 40px;
+  padding: 6px 8px;
+}
+
+ul#playerList {
+  margin: 0 0 12px;
+}
+
+.ghost-btn {
+  background: transparent;
+  box-shadow: none;
+  border: 2px solid #3b3370;
+  margin-top: 12px;
+}
+
+#board table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+  margin-bottom: 16px;
+}
+
+#board th {
+  color: #948cc4;
+  font-weight: normal;
+  font-size: 12px;
+  padding: 4px;
+}
+
+#board td {
+  padding: 7px 4px;
+  border-top: 1px solid #3b3370;
+}
+
+#board td:first-child {
+  width: 34px;
+  font-weight: bold;
+  color: #ffd23f;
+}
+
+#board td.name {
+  text-align: left;
+}
+
+#board .empty {
+  color: #948cc4;
+  padding: 20px;
+}
+
+#topbar {
+  position: absolute;
+  top: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 22px;
+  font-weight: 900;
+  background: rgba(20, 16, 40, 0.7);
+  border-radius: 14px;
+  padding: 4px 16px;
+  white-space: nowrap;
+}
+
+#topbar:empty {
+  display: none;
+}
+
+#scoreboard .bar {
+  height: 4px;
+  border-radius: 2px;
+  background: #ffd23f;
+  margin: -1px 0 3px 20px;
+}
+
+#scoreboard .tm {
+  font-size: 11px;
+}
+
+@media (max-width: 600px) {
+  #topbar {
+    font-size: 16px;
+    top: auto;
+    bottom: 170px;
+  }
+}
+
+/* 大厅玩家列表两列排布，避免卡片太长 */
+#playerList {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+}
+
+#playerList li {
+  margin: 0;
+  padding: 6px 8px;
+  font-size: 14px;
+  min-width: 0;
+}
+
+#playerList li span:nth-child(2) {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.card.wide .picker .opt {
+  padding: 6px 10px;
+}
