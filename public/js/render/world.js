@@ -1,6 +1,6 @@
 // 游戏世界：每帧更新角色、展示台、场上物体、模式特效、事件反馈和镜头
 import * as THREE from 'three';
-import { scene, camera, render, textSprite, LIQUID_Y, disposeGroup } from './core.js';
+import { scene, camera, render, textSprite, LIQUID_Y, disposeGroup, resize } from './core.js';
 import { theme, syncTiles, updateArena, ambient, setPaint, bumperHit, resetTiles, updateLevel, mapDef } from './arena.js';
 import { sparks, dust, burst, starBurst, splash, puff, speedLines, ringWave, popText, updateEffects } from './particles.js';
 import { Character } from './character.js';
@@ -22,6 +22,21 @@ let camR = 460;
 let wardrobeYaw = 0;
 
 export const setView = (v) => (view = v);
+
+// 第一人称视角
+let camMode = '3p';
+let fpYaw = 0;
+let fpActive = false;
+export function setCameraMode(m) {
+  camMode = m === '1p' ? '1p' : '3p';
+}
+export const turnFirstPerson = (d) => (fpYaw += d);
+export const getFpYaw = () => fpYaw;
+export const isFirstPerson = () => fpActive;
+// 让第一人称面向某个点（服务器坐标）
+export function faceTowards(x, y, fromX, fromY) {
+  fpYaw = Math.atan2(x - fromX, -(y - fromY));
+}
 export const addShake = (v) => {
   if (settings.shake) shake = Math.max(shake, v);
 };
@@ -325,7 +340,7 @@ function updatePlayers(dt, t, rdt) {
     const sc = v.scale * fade * popS;
     v.visible = visible;
     const root = v.ch.root;
-    root.visible = visible;
+    root.visible = visible && !(fpActive && p.id === myId);
     root.position.set(v.x, ty + sc * (1 + hopY + celebrate + ghostFloat) + v.fy + dropY + v.hangY, v.z);
     const lift = root.position.y - ty - sc;
     v.shadow.visible = visible && !(game && (p.falling || p.hang));
@@ -357,7 +372,7 @@ function updatePlayers(dt, t, rdt) {
 
     const labelColor = teamMode ? (p.team ? '#9cc4ff' : '#ff9ca4') : p.id === myId ? '#ffe066' : '#ffffff';
     setLabel(v, labelText(p, s), labelColor);
-    v.label.visible = visible && (settings.names || !game || p.id === myId);
+    v.label.visible = visible && (settings.names || !game || p.id === myId) && !(fpActive && (p.id === myId || camera.position.distanceTo(root.position) < 110));
     v.label.position.set(v.x, root.position.y + sc * 1.6 + 16, v.z);
     if (v.bubble) {
       v.bubbleT -= rdt;
@@ -380,7 +395,7 @@ function updatePlayers(dt, t, rdt) {
     }
   }
 
-  const showMe = me && me.visible && game && !me.p.falling;
+  const showMe = me && me.visible && game && !me.p.falling && !fpActive;
   myRing.visible = myArrow.visible = !!showMe;
   if (showMe) {
     const ready = me.p.dashCd <= 0;
@@ -645,6 +660,7 @@ function updateKey(m, t) {
   if (!keyView.root.visible) return;
   const holder = k.h ? views.get(k.h) : null;
   if (holder) {
+    keyView.root.visible = !(fpActive && k.h === myId);
     keyView.root.position.set(holder.x, holder.ch.root.position.y + holder.scale * 2.2 + 14, holder.z);
     keyView.halo.visible = false;
   } else {
@@ -697,6 +713,8 @@ function updateRopes(s) {
     for (let k = 0; k < ROPE_SEG; k++) {
       bez(pa, pc, pb, k / ROPE_SEG, a);
       bez(pa, pc, pb, (k + 1) / ROPE_SEG, b);
+      // 第一人称：挨着镜头的那几节绳子不画，不然像一根大柱子挡在眼前
+      if (fpActive && Math.min(a.distanceTo(camera.position), b.distanceTo(camera.position)) < 70) continue;
       const len = a.distanceTo(b) || 0.01;
       tmpQ.setFromUnitVectors(UP, b.clone().sub(a).normalize());
       tmpS.set(3.4, len * 1.08, 3.4);
@@ -1187,9 +1205,26 @@ function updateCamera(dt, t, me) {
     want.copy(focus).addScaledVector(dir, dist);
     speed = s.phase === 'countdown' && introT < introDur ? 9 : s.phase === 'roundEnd' ? 3.5 : 4.5;
   }
-  const k = 1 - Math.exp(-dt * speed);
-  camPos.lerp(want, k);
-  camTarget.lerp(look, k);
+  // 第一人称：比赛进行中、自己活着的时候，镜头放在自己头上
+  const wantFp = camMode === '1p' && state && view === 'room' && (state.phase === 'countdown' || state.phase === 'playing') && me && me.visible && me.p.alive && !me.p.falling && !me.p.hang;
+  if (wantFp !== fpActive) {
+    fpActive = wantFp;
+    camera.fov = fpActive ? 72 : 45;
+    resize();
+  }
+  if (fpActive) {
+    const eyeY = me.v.ch.root.position.y + me.v.scale * 0.95;
+    const fx = Math.sin(fpYaw);
+    const fz = -Math.cos(fpYaw);
+    want.set(me.v.x - fx * me.v.scale * 0.3, eyeY, me.v.z - fz * me.v.scale * 0.3);
+    look.set(want.x + fx * 100, eyeY - 22, want.z + fz * 100);
+    camPos.copy(want);
+    camTarget.copy(look);
+  } else {
+    const k = 1 - Math.exp(-dt * speed);
+    camPos.lerp(want, k);
+    camTarget.lerp(look, k);
+  }
   shake *= Math.pow(0.02, dt);
   camera.position.copy(camPos);
   camera.position.x += (Math.random() - 0.5) * shake;

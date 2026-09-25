@@ -2,6 +2,8 @@
 const keys = new Set();
 let dashQueued = false;
 const touchDir = { x: 0, y: 0 };
+let lookDX = 0; // 第一人称：鼠标 / 右半屏拖动累计的转向量（像素）
+let fpMode = () => false;
 let active = () => false; // 当前是否在操控角色（由 main.js 设置）
 
 const typing = (e) => e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA');
@@ -35,12 +37,19 @@ function resetStick() {
   stick.style.bottom = '';
 }
 
+let lookTouch = null;
+let lookX = 0;
 window.addEventListener(
   'touchstart',
   (e) => {
     if (!active()) return;
     for (const t of e.changedTouches) {
       if (t.target.closest && t.target.closest('button, .hud-buttons, .emote-picker, .modal')) continue;
+      if (t.clientX >= window.innerWidth * 0.55 && lookTouch === null && fpMode()) {
+        lookTouch = t.identifier;
+        lookX = t.clientX;
+        continue;
+      }
       if (t.clientX < window.innerWidth * 0.55 && stickTouch === null) {
         stickTouch = t.identifier;
         origin = { x: t.clientX, y: t.clientY };
@@ -56,6 +65,11 @@ window.addEventListener(
   'touchmove',
   (e) => {
     for (const t of e.changedTouches) {
+      if (t.identifier === lookTouch) {
+        lookDX += (t.clientX - lookX) * 1.6;
+        lookX = t.clientX;
+        continue;
+      }
       if (t.identifier !== stickTouch) continue;
       let dx = t.clientX - origin.x;
       let dy = t.clientY - origin.y;
@@ -72,8 +86,16 @@ window.addEventListener(
   { passive: true }
 );
 const endTouch = (e) => {
-  for (const t of e.changedTouches) if (t.identifier === stickTouch) resetStick();
+  for (const t of e.changedTouches) {
+    if (t.identifier === stickTouch) resetStick();
+    if (t.identifier === lookTouch) lookTouch = null;
+  }
 };
+
+// 电脑：锁定鼠标后左右移动鼠标转向
+window.addEventListener('mousemove', (e) => {
+  if (document.pointerLockElement && fpMode()) lookDX += e.movementX;
+});
 window.addEventListener('touchend', endTouch);
 window.addEventListener('touchcancel', endTouch);
 
@@ -94,11 +116,24 @@ export const input = {
   setActive(fn) {
     active = fn;
   },
-  read() {
+  setFirstPerson(fn) {
+    fpMode = fn;
+  },
+  // 第一人称转向：返回 [-1,1] 的键盘转向 + 鼠标/拖动像素
+  takeTurn() {
+    let k = 0;
+    if (keys.has('ArrowLeft') || keys.has('KeyQ')) k -= 1;
+    if (keys.has('ArrowRight') || keys.has('KeyE')) k += 1;
+    const px = lookDX;
+    lookDX = 0;
+    return { keys: k, px };
+  },
+  // fp=true 时方向键左右用来转向，不再左右平移
+  read(fp = false) {
     let x = 0;
     let y = 0;
-    if (keys.has('KeyA') || keys.has('ArrowLeft')) x -= 1;
-    if (keys.has('KeyD') || keys.has('ArrowRight')) x += 1;
+    if (keys.has('KeyA') || (!fp && keys.has('ArrowLeft'))) x -= 1;
+    if (keys.has('KeyD') || (!fp && keys.has('ArrowRight'))) x += 1;
     if (keys.has('KeyW') || keys.has('ArrowUp')) y -= 1;
     if (keys.has('KeyS') || keys.has('ArrowDown')) y += 1;
     x += touchDir.x;
@@ -118,6 +153,8 @@ export const input = {
   reset() {
     keys.clear();
     dashQueued = false;
+    lookDX = 0;
+    lookTouch = null;
     resetStick();
   },
 };

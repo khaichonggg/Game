@@ -1499,6 +1499,18 @@ body.is-host .guest-only {
   white-space: nowrap;
 }
 
+#crosshair {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 10px;
+  height: 10px;
+  margin: -5px 0 0 -5px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.85);
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.4);
+}
+
 #spectate {
   position: absolute;
   bottom: calc(70px + var(--safe-b));

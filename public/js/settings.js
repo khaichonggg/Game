@@ -20,7 +20,7 @@ const save = (k, v) => {
 const isTouch = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
 
 export const settings = Object.assign(
-  { music: 0.5, sfx: 0.8, quality: isTouch ? 'medium' : 'high', shake: true, names: true, autoQuality: true },
+  { music: 0.5, sfx: 0.8, quality: isTouch ? 'medium' : 'high', shake: true, names: true, autoQuality: true, view: '3p' },
   load('bb_settings', {})
 );
 export function saveSettings() {

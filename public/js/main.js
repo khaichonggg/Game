@@ -2,7 +2,7 @@
 import qrcode from 'qrcode';
 import * as world from './render/world.js';
 import { applyMap, mapDef } from './render/arena.js';
-import { applyQuality, bloom, scene as renderScene } from './render/core.js';
+import { applyQuality, bloom, scene as renderScene, camera as renderCamera } from './render/core.js';
 import { sfx, unlock, applyVolumes, playMusic } from './audio.js';
 import { settings, saveSettings, profile, saveProfile, playerName, setPlayerName, token, lastRoom, isTouch } from './settings.js';
 import { CHARACTERS, SKINS, HATS, COLORS, MAPS, MODES, ITEMS, TEAM_COLORS, TEAM_NAMES, BOT_LEVELS, charInfo } from './data.js';
@@ -288,6 +288,7 @@ function onPhase(from, to) {
     if (to === 'countdown') {
       lastCount = -1;
       aliveThisRound = false;
+      faceObjective();
       if (state.settings.mode === 'rope') setTimeout(() => ropeHint(), 900);
     }
     if (to === 'playing' && from === 'countdown') {
@@ -419,6 +420,36 @@ function uiEvents(events) {
     }
   }
 }
+
+// 第一人称：每局开始时面向场地中心（闯关模式面向出口）
+function faceObjective() {
+  const m = me();
+  if (!m) return;
+  const tgt = state.settings.mode === 'rope' && state.m.exit ? state.m.exit : { x: 0, y: 0 };
+  if (Math.hypot(tgt.x - m.x, tgt.y - m.y) > 1) world.faceTowards(tgt.x, tgt.y, m.x, m.y);
+}
+
+// 切换第一 / 第三人称
+function toggleView() {
+  settings.view = settings.view === '1p' ? '3p' : '1p';
+  saveSettings();
+  world.setCameraMode(settings.view);
+  if (settings.view === '1p') {
+    faceObjective();
+    notice(isTouch ? '第一人称：左边摇杆移动，右半屏左右拖动转向' : '第一人称：WASD 移动，鼠标 / ←→ / Q E 转向（点一下画面锁定鼠标，Esc 解锁）');
+  } else {
+    if (document.pointerLockElement) document.exitPointerLock();
+    notice('已切换到第三人称');
+  }
+}
+$('btnView').onclick = () => toggleView();
+document.getElementById('game').addEventListener('click', (e) => {
+  const cv = e.currentTarget;
+  if (world.isFirstPerson() && !isTouch && !document.pointerLockElement && cv.requestPointerLock) {
+    const r = cv.requestPointerLock();
+    if (r && r.catch) r.catch(() => {});
+  }
+});
 
 // 绳索闯关：每关开始时的提示
 function ropeHint() {
@@ -1393,7 +1424,13 @@ function openSettings() {
 
 function openPause() {
   if (!state) return;
-  const actions = [{ label: '▶ 继续游戏', cls: 'btn-yellow' }, { label: '⚙️ 设置', cls: 'btn-blue', onClick: openSettings }, { label: '❓ 玩法说明', cls: 'btn-purple', onClick: () => (closeModal(true), openHelp()) }];
+  if (document.pointerLockElement) document.exitPointerLock();
+  const actions = [
+    { label: '▶ 继续游戏', cls: 'btn-yellow' },
+    { label: settings.view === '1p' ? '🎥 切换到第三人称' : '👁️ 切换到第一人称', cls: 'btn-green', onClick: toggleView },
+    { label: '⚙️ 设置', cls: 'btn-blue', onClick: openSettings },
+    { label: '❓ 玩法说明', cls: 'btn-purple', onClick: () => (closeModal(true), openHelp()) },
+  ];
   if (isHost && inRound(state.phase)) {
     actions.push({
       label: '🏁 结束比赛，回到房间',
@@ -1505,6 +1542,7 @@ window.addEventListener('keydown', (e) => {
     send({ t: 'emote', i: Number(e.code.slice(5)) - 1 });
     hideEmotes();
   }
+  if (e.code === 'KeyV' && inRoom && current === 'game') toggleView();
   if (e.key === 'Enter' && current === 'lobby') {
     $('chatInput').focus();
     e.preventDefault();
@@ -1520,7 +1558,15 @@ let sinceInput = 0;
 setInterval(() => {
   if (!inRoom || !state) return;
   const active = current === 'game' && inRound(state.phase) && !modalOpen();
-  const inp = active ? input.read() : { x: 0, y: 0 };
+  const fp = world.isFirstPerson();
+  let inp = active ? input.read(fp) : { x: 0, y: 0 };
+  if (fp) {
+    // 第一人称：W 是"朝我看的方向走"，换算成世界方向再发给服务器
+    const yaw = world.getFpYaw();
+    const fx = Math.sin(yaw);
+    const fy = -Math.cos(yaw);
+    inp = { x: Math.cos(yaw) * inp.x - fx * inp.y, y: Math.sin(yaw) * inp.x - fy * inp.y };
+  }
   const dash = input.takeDash() && active;
   const msg = { t: 'input', x: Math.round(inp.x * 100) / 100, y: Math.round(inp.y * 100) / 100 };
   if (dash) msg.dash = true;
@@ -1550,6 +1596,8 @@ window.addEventListener('keydown', unlockOnce);
 
 applyQuality();
 document.body.dataset.quality = settings.quality;
+world.setCameraMode(settings.view);
+input.setFirstPerson(() => world.isFirstPerson());
 world.setMenuProfile(profile);
 refreshProfileChip();
 show('menu');
@@ -1626,6 +1674,12 @@ let booted = false;
 function loop(now) {
   const rdt = Math.min(0.1, (now - last) / 1000);
   last = now;
+  if (world.isFirstPerson() && !modalOpen()) {
+    const tr = input.takeTurn();
+    world.turnFirstPerson(tr.keys * 2.6 * rdt + tr.px * 0.0045);
+  } else input.takeTurn();
+  $('crosshair').classList.toggle('hidden', !world.isFirstPerson());
+  if (!world.isFirstPerson() && document.pointerLockElement) document.exitPointerLock();
   world.frame(rdt, now / 1000);
   watchPerf(rdt);
   if (!booted) {
@@ -1637,4 +1691,4 @@ function loop(now) {
 requestAnimationFrame(loop);
 
 // 调试 / 自动化测试用
-window.__game = { get state() { return state; }, get myId() { return myId; }, send, get screen() { return current; }, views: world.debugViews, bloom, scene: renderScene };
+window.__game = { get state() { return state; }, get myId() { return myId; }, send, get screen() { return current; }, views: world.debugViews, bloom, scene: renderScene, camera: renderCamera };

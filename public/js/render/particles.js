@@ -23,8 +23,9 @@ class Particles {
       depthWrite: false,
       blending,
       uniforms: { uScale: { value: 500 } },
+      // 离镜头很近的粒子淡出、并限制最大尺寸（第一人称时脚下的烟尘不会糊满屏幕）
       vertexShader: `attribute float aSize; attribute vec4 aColor; varying vec4 vColor; uniform float uScale;
-        void main(){ vColor = aColor; vec4 mv = modelViewMatrix * vec4(position, 1.0); gl_PointSize = aSize * uScale / -mv.z; gl_Position = projectionMatrix * mv; }`,
+        void main(){ vec4 mv = modelViewMatrix * vec4(position, 1.0); float d = -mv.z; vColor = vec4(aColor.rgb, aColor.a * smoothstep(40.0, 120.0, d)); gl_PointSize = min(aSize * uScale / d, 90.0); gl_Position = projectionMatrix * mv; }`,
       fragmentShader: `varying vec4 vColor;
         void main(){ float d = length(gl_PointCoord - 0.5); if (d > 0.5) discard; gl_FragColor = vec4(vColor.rgb, vColor.a * smoothstep(0.5, 0.1, d)); }`,
     });
