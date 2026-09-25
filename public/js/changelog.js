@@ -1,6 +1,18 @@
 // 更新内容（What's New）：新版本写在最前面。设置里的「📰 更新内容」按钮会显示这里的内容
 export const CHANGELOG = [
   {
+    v: '2.5.4',
+    date: '2026-09-25',
+    zh: [
+      '🔌 Windows 把 3000 端口"保留"给 Hyper-V / WSL 时，以前服务器会直接退出，现在会自动换到 3001 等其他端口',
+      '📝 服务器每次意外停止都会记到 data/crash.log，并且会一直自动重启（以前连续 5 次就放弃了）',
+    ],
+    en: [
+      '🔌 When Windows reserves port 3000 (Hyper-V / WSL), the server used to quit; it now moves to 3001 or the next free port',
+      '📝 Every unexpected server stop is recorded in data/crash.log and the server keeps restarting (it used to give up after 5 times)',
+    ],
+  },
+  {
     v: '2.5.3',
     date: '2026-09-25',
     zh: [

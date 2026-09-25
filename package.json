@@ -1,6 +1,6 @@
 {
   "name": "bumper-balls",
-  "version": "2.5.3",
+  "version": "2.5.4",
   "description": "碰碰球大乱斗 - 轻量多人在线派对游戏",
   "main": "server.js",
   "scripts": {
@@ -26,5 +26,5 @@
     "branch": "",
     "fallbackBranch": "claude/loving-babbage-zumou8"
   },
-  "releaseNotes": "修复换网络后服务器崩溃（Windows 取网卡地址出错）；连不上时显示检查清单；新增 diagnose.bat 一键诊断"
+  "releaseNotes": "端口被 Windows 保留时自动换端口；服务器每次意外停止都会记录并自动重启"
 }

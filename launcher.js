@@ -34,6 +34,16 @@ function installDeps() {
 
 let crashes = [];
 let stopping = false; // 用户按 Ctrl+C / 关窗口时不要自动重启
+// 服务器每次意外停止都记到 data/crash.log，诊断工具会把最后几行带上
+function logExit(msg) {
+  try {
+    const dir = path.join(__dirname, 'data');
+    fs.mkdirSync(dir, { recursive: true });
+    fs.appendFileSync(path.join(dir, 'crash.log'), `[${new Date().toISOString()}] launcher: ${msg}\n`);
+  } catch {
+    /* 写不了就算了 */
+  }
+}
 
 function start() {
   // 只有第一次启动时打开浏览器；更新后重启时，已打开的页面会自己刷新
@@ -58,17 +68,18 @@ function start() {
       setTimeout(start, 300);
       return;
     }
-    // 服务器意外退出：自动重启，朋友们的页面会自己重新连上；1 分钟内连续崩 5 次就不再重启
-    if (!stopping && code !== 0) {
+    // 服务器意外退出（不是用户按 Ctrl+C）：记下来，然后自动重启，朋友们的页面会自己重新连上
+    if (!stopping) {
       const now = Date.now();
-      crashes = crashes.filter((t) => now - t < 60000);
+      crashes = crashes.filter((t) => now - t < 5 * 60000);
       crashes.push(now);
-      if (crashes.length <= 5) {
+      logExit(`server exited unexpectedly: code=${code} signal=${signal} (restart #${crashes.length} in 5 min)`);
+      if (crashes.length <= 20) {
         console.log(`\n⚠️ The server stopped unexpectedly (code ${code ?? signal}), restarting… (服务器意外停止，正在自动重启…)\n`);
-        setTimeout(start, 1000);
+        setTimeout(start, crashes.length > 5 ? 3000 : 1000);
         return;
       }
-      console.log('\n❌ The server keeps crashing. Please send data/crash.log to the developer. (服务器反复出错，请把 data/crash.log 发给开发者)\n');
+      console.log('\n❌ The server keeps stopping. Double-click diagnose.bat and send the report to the developer. (服务器反复停止，请双击 diagnose.bat 把报告发给开发者)\n');
     }
     process.exit(signal ? 1 : code || 0);
   });

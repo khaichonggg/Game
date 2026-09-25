@@ -293,8 +293,9 @@ setInterval(() => {
 // 启动：端口被占用时自动试下一个（最多试 10 个）
 let tries = 0;
 server.on('error', (e) => {
-  if (e.code === 'EADDRINUSE' && !FIXED_PORT && tries < 10) {
-    console.log(`Port ${PORT} is busy, trying ${PORT + 1}…   (端口 ${PORT} 被占用，换一个)`);
+  // EACCES：Windows 的 Hyper-V / WSL / Docker 会"保留"一段端口（经常包含 3000），这时也换下一个
+  if ((e.code === 'EADDRINUSE' || e.code === 'EACCES') && !FIXED_PORT && tries < 10) {
+    console.log(`Port ${PORT} is ${e.code === 'EACCES' ? 'reserved by Windows' : 'busy'}, trying ${PORT + 1}…   (端口 ${PORT} ${e.code === 'EACCES' ? '被系统保留' : '被占用'}，换一个)`);
     tries++;
     PORT++;
     setTimeout(() => server.listen(PORT), 100);
