@@ -166,4 +166,32 @@ console.log('结算与排行榜数据');
   check(room.list().filter((p) => p.bot).every((p) => p.ready), '回到大厅后机器人保持准备');
 }
 
+console.log('道具栏');
+{
+  const { room, host } = makeRoom();
+  const ws2 = new FakeWS();
+  const p2 = room.addPlayer({ name: '小红', ws: ws2, token: 't2' });
+  room.handle(p2, { t: 'ready', v: true });
+  room.handle(host, { t: 'start' });
+  step(room, 4); // 倒计时
+  check(room.phase === 'playing', '进入对局');
+  const evs = [];
+  const put = (type) => room.items.push({ id: 900 + room.items.length, type, x: host.x, y: host.y });
+  put('speed');
+  step(room, 0.1, (e) => evs.push(...e));
+  check(host.item === 'speed' && host.fx.speed === 0, '捡到道具先放进道具栏，不会马上生效');
+  check(evs.some((e) => e.type === 'grab' && e.id === host.id && e.item === 'speed'), '捡到时有提示事件');
+  put('bomb');
+  step(room, 0.1);
+  check(host.item === 'speed' && room.items.some((it) => it.type === 'bomb'), '道具栏满了就不会再捡，道具留在地上');
+  room.handle(host, { t: 'use' });
+  check(host.item === null && host.fx.speed > 0, '按"使用"才生效，道具栏清空');
+  step(room, 0.1);
+  check(host.item === 'bomb', '用掉之后可以再捡');
+  room.handle(p2, { t: 'use' });
+  check(p2.fx.speed === 0 && !p2.item, '手上没有道具时按"使用"什么也不会发生');
+  const snap = room.snapshot();
+  check(snap.players.find((q) => q.id === host.id).item === 'bomb', '快照里带着每个人道具栏里的东西');
+}
+
 done();

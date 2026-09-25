@@ -182,8 +182,8 @@ For a permanent address you can also deploy to any Node + WebSocket host (Render
 
 | | Move | Dash | More |
 | --- | --- | --- | --- |
-| 🖥️ **Keyboard** | <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> / arrows | <kbd>Space</kbd> / <kbd>Shift</kbd> / <kbd>J</kbd> | <kbd>V</kbd> first person · <kbd>1</kbd>–<kbd>8</kbd> emotes · <kbd>T</kbd> taunt sticker · <kbd>Esc</kbd> menu · <kbd>Enter</kbd> chat |
-| 📱 **Touch** | drag the left half | big red button | drag the right half to turn in first person |
+| 🖥️ **Keyboard** | <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> / arrows | <kbd>Space</kbd> / <kbd>Shift</kbd> / <kbd>J</kbd> | <kbd>F</kbd> use item · <kbd>V</kbd> first person · <kbd>1</kbd>–<kbd>8</kbd> emotes · <kbd>T</kbd> taunt sticker · <kbd>Esc</kbd> menu · <kbd>Enter</kbd> chat |
+| 📱 **Touch** | drag the left half | big red button (item button next to it) | drag the right half to turn in first person |
 
 ## 🔄 Updating
 

@@ -92,9 +92,15 @@ const endTouch = (e) => {
   }
 };
 
-// 电脑：锁定鼠标后左右移动鼠标转向
+// 电脑：按住鼠标拖动转向；点一下画面锁定鼠标后，直接移动鼠标也能转向
+let dragLook = false;
+window.addEventListener('mousedown', (e) => {
+  if (fpMode() && active() && e.target && e.target.id === 'game') dragLook = true;
+});
+window.addEventListener('mouseup', () => (dragLook = false));
 window.addEventListener('mousemove', (e) => {
-  if (document.pointerLockElement && fpMode()) lookDX += e.movementX;
+  if (!fpMode()) return;
+  if (document.pointerLockElement || (dragLook && e.buttons)) lookDX += e.movementX;
 });
 window.addEventListener('touchend', endTouch);
 window.addEventListener('touchcancel', endTouch);

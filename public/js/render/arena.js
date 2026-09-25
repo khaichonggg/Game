@@ -55,7 +55,7 @@ export const THEMES = {
     hemi: ['#9fb0ff', '#ff6a2a', 0.9],
     sun: ['#fff0dc', 2.6],
     under: ['#ff5a1a', 3.5],
-    floor: { cols: ['#e6d3ae', '#d4bf95', '#dcc8a0'], center: ['#9aa3d6', '#8790c8'], rough: 0.8, metal: 0, side: '#7a5c4a' },
+    floor: { cols: ['#ffeccb', '#fbe0b6', '#fff2d9'], center: ['#cdb9ff', '#bba5f7'], rough: 0.65, metal: 0, body: '#c0703f', bodyRough: 0.55 },
     splash: ['#ff7a1a', '#ffd23f'],
     ambient: 'embers',
   },
@@ -68,7 +68,7 @@ export const THEMES = {
     hemi: ['#ffffff', '#6fb6e6', 1.1],
     sun: ['#ffffff', 2.3],
     under: ['#5fc8ff', 1.0],
-    floor: { cols: ['#eef9ff', '#d3edfa', '#e0f3fc'], center: ['#eef9ff', '#d3edfa'], rough: 0.1, metal: 0.05, side: '#8cc8e8' },
+    floor: { cols: ['#ffffff', '#f3faff', '#fafdff'], center: ['#e2f4ff', '#d4eeff'], rough: 0.55, metal: 0, body: '#8fd6f7', bodyRough: 0.08 },
     splash: ['#bfe9ff', '#ffffff'],
     ambient: 'snow',
   },
@@ -81,7 +81,7 @@ export const THEMES = {
     hemi: ['#8fa0ff', '#40306a', 0.8],
     sun: ['#ffffff', 2.8],
     under: ['#8a5cff', 2.2],
-    floor: { cols: ['#4b5478', '#3d4566', '#555f88'], center: ['#6a55a8', '#5b4896', '#7461b8'], rough: 0.4, metal: 0.6, side: '#232842', sideGlow: '#19d3ff' },
+    floor: { cols: ['#9aa3f0', '#8b95e6', '#a6aef5'], center: ['#d2a6ff', '#c393ff', '#dcb6ff'], rough: 0.4, metal: 0.25, body: '#34386e', bodyRough: 0.35, sideGlow: '#19d3ff' },
     splash: null,
     ambient: 'dust',
   },
@@ -94,7 +94,7 @@ export const THEMES = {
     hemi: ['#fff5fb', '#ff9ecf', 1.0],
     sun: ['#fff8f0', 2.3],
     under: ['#ff7ab8', 1.0],
-    floor: { cols: ['#f7d49c', '#ffb3d1', '#f7d49c'], center: ['#8fdcff', '#7fcfef'], rough: 0.55, metal: 0, side: '#6b3a24' },
+    floor: { cols: ['#ffc2dc', '#fff1c9', '#c6f2df', '#ffd8f0'], center: ['#aee6ff', '#9edcff'], rough: 0.4, metal: 0, body: '#c7864a', bodyRough: 0.6 },
     splash: ['#ffb3d1', '#ffffff'],
     ambient: 'sprinkles',
   },
@@ -109,7 +109,7 @@ export let tiles = [];
 export let bumpers = [];
 export let arenaR = 460;
 const floaters = [];
-const rockMat = markShared(std('#4a3436', { roughness: 0.95, flatShading: true }));
+const rockMat = markShared(std('#8a5540', { roughness: 0.6 }));
 
 function tileShape(t, inset) {
   const s = new THREE.Shape();
@@ -169,22 +169,23 @@ function detailTexture(kind) {
   g.fillStyle = '#ffffff';
   g.fillRect(0, 0, 256, 256);
   if (kind === 'lava') {
-    for (let i = 0; i < 900; i++) {
-      const v = 200 + Math.floor(rnd() * 55);
-      g.fillStyle = `rgb(${v},${v},${v})`;
-      g.fillRect(rnd() * 256, rnd() * 256, 1 + rnd() * 3, 1 + rnd() * 3);
-    }
-    g.strokeStyle = 'rgba(90,70,60,0.35)';
-    g.lineWidth = 1.5;
-    for (let i = 0; i < 6; i++) {
+    for (let i = 0; i < 260; i++) {
+      const v = 214 + Math.floor(rnd() * 34);
+      g.fillStyle = `rgb(${v},${v - 8},${v - 18})`;
       g.beginPath();
-      let x = rnd() * 256;
-      let y = rnd() * 256;
-      g.moveTo(x, y);
-      for (let k = 0; k < 5; k++) g.lineTo((x += (rnd() - 0.5) * 50), (y += (rnd() - 0.5) * 50));
-      g.stroke();
+      g.arc(rnd() * 256, rnd() * 256, 1 + rnd() * 2.4, 0, Math.PI * 2);
+      g.fill();
     }
   } else if (kind === 'ice') {
+    // 雪面：细碎的闪光点
+    for (let i = 0; i < 220; i++) {
+      const v = 226 + Math.floor(rnd() * 29);
+      g.fillStyle = `rgb(${v - 10},${v - 3},${v})`;
+      g.beginPath();
+      g.arc(rnd() * 256, rnd() * 256, 0.8 + rnd() * 1.8, 0, Math.PI * 2);
+      g.fill();
+    }
+  } else if (kind === 'ice-old') {
     const gr = g.createLinearGradient(0, 0, 256, 256);
     gr.addColorStop(0, '#ffffff');
     gr.addColorStop(0.5, '#e4f1f7');
@@ -267,57 +268,56 @@ function buildArena(def) {
   bumpers = [];
   exitZone = new Set(def.level ? def.feat.exit : []);
   const f = theme.floor;
-  const bevel = 2.5;
+  const bevel = 6;
   const isIce = theme === THEMES.ice;
-  const sideMat = std(f.side, { roughness: 0.85, flatShading: true, emissive: f.sideGlow || '#000000', emissiveIntensity: f.sideGlow ? 0.7 : 0 });
+  // 底座：所有地砖共用一个材质；顶面的"糖霜 / 雪 / 沙"每块一个材质（预警发光、涂色要单独改颜色）
+  const bodyMat = std(f.body, { roughness: f.bodyRough, metalness: theme === THEMES.space ? 0.4 : 0, emissive: f.sideGlow || '#000000', emissiveIntensity: f.sideGlow ? 0.45 : 0 });
   const underMat = isIce
     ? new THREE.MeshStandardMaterial({ color: '#cfefff', roughness: 0.1, transparent: true, opacity: 0.85 })
-    : std(theme === THEMES.candy ? '#5a2f1c' : '#2e2026', { roughness: 1, flatShading: true });
-  const stalGeos = [0, 1, 2].map((k) =>
-    isIce ? new THREE.ConeGeometry(6 + k * 2, 26 + k * 12, 6).rotateX(Math.PI) : rockify(new THREE.ConeGeometry(12 + k * 4, 40 + k * 22, 5, 2), 0.1, k + 9).rotateX(Math.PI)
-  );
+    : std(theme === THEMES.candy ? '#7a4424' : new THREE.Color(f.body).offsetHSL(0, -0.1, -0.18), { roughness: 0.9 });
+  const stalGeos = [0, 1, 2].map((k) => (isIce ? new THREE.ConeGeometry(6 + k * 2, 26 + k * 12, 10).rotateX(Math.PI) : new THREE.ConeGeometry(11 + k * 4, 34 + k * 18, 12).rotateX(Math.PI)));
   def.tiles.forEach((t, i) => {
     const isCenter = t.l >= def.center;
     const palette = isCenter ? f.center : f.cols;
-    const col = new THREE.Color(palette[t.c % palette.length]);
+    const col = new THREE.Color(palette[(t.c + (isCenter ? 0 : t.l)) % palette.length]);
     // 闯关关卡：机关地砖用醒目的颜色（闪烁地砖橙 / 蓝两组，钥匙桥木头色，机关桥青色，终点岛带一点绿）
     if (def.level) {
       const lc = { A: '#ff9d3a', B: '#3fb8ff', k: '#c8935a', p: '#4fd6d0', E: t.c ? '#ffe27a' : '#fff6d0' }[t.ch];
       if (lc) col.lerp(new THREE.Color(lc), 0.75);
       else if (exitZone.has(i)) col.lerp(new THREE.Color('#7be38b'), 0.28);
     }
-    if (isIce) col.offsetHSL(0, 0, Math.sin(i * 12.9898) * 0.02);
+    if (isIce) col.offsetHSL(0, 0, Math.sin(i * 12.9898) * 0.015);
     const top = std(col, { roughness: f.rough, metalness: f.metal, emissive: '#ff2a00', emissiveIntensity: 0, map: detailTexture(def.theme || def.id) });
-    const geo = new THREE.ExtrudeGeometry(tileShape(t, 3), {
-      depth: TILE_H,
-      bevelEnabled: true,
-      bevelThickness: bevel,
-      bevelSize: bevel,
-      bevelSegments: 2,
-      curveSegments: t.k === 's' ? 5 : 2,
-    });
-    // 形状在 (x, y) 平面，转到 3D 后 y -> z，挤出方向朝下，顶面在 y = 0
+    const curveSegments = t.k === 's' ? 6 : 3;
+    const geo = new THREE.ExtrudeGeometry(tileShape(t, 4), { depth: TILE_H - 4, bevelEnabled: true, bevelThickness: bevel, bevelSize: bevel * 0.8, bevelSegments: 4, curveSegments });
+    // 形状在 (x, y) 平面，转到 3D 后 y -> z，挤出方向朝下；底座顶面在 y = -5，糖霜顶面正好在 y = 0（和物理地面一致）
     geo.rotateX(Math.PI / 2);
-    geo.translate(-t.cx, -bevel, -t.cy);
-    const m = new THREE.Mesh(geo, [top, sideMat]);
+    geo.translate(-t.cx, -bevel - 5, -t.cy);
+    const m = new THREE.Mesh(geo, bodyMat);
     m.position.set(t.cx, 0, t.cy);
     m.receiveShadow = true;
-    // 地砖底下挂一点岩石 / 冰锥
+    const capGeo = new THREE.ExtrudeGeometry(tileShape(t, 9), { depth: 2, bevelEnabled: true, bevelThickness: 3, bevelSize: 3.5, bevelSegments: 4, curveSegments });
+    capGeo.rotateX(Math.PI / 2);
+    capGeo.translate(-t.cx, -3, -t.cy);
+    const cap = new THREE.Mesh(capGeo, top);
+    cap.receiveShadow = true;
+    m.add(cap);
+    // 地砖底下挂一点圆圆的岩石 / 冰锥
     if ((theme === THEMES.lava || isIce) && (i * 7 + t.l) % 3 !== 0) {
       const st = new THREE.Mesh(stalGeos[(i * 5) % 3], underMat);
-      st.position.y = -TILE_H - (isIce ? 10 : 20);
+      st.position.y = -TILE_H - (isIce ? 10 : 16);
       m.add(st);
     }
     // 太空站：地砖底部的推进器灯
     if (theme === THEMES.space && i % 4 === 0) {
-      const th = new THREE.Mesh(new THREE.CylinderGeometry(8, 12, 10, 8), std('#1a1d30', { metalness: 0.8, emissive: '#19d3ff', emissiveIntensity: 0.9 }));
-      th.position.y = -TILE_H - 6;
+      const th = new THREE.Mesh(new THREE.CylinderGeometry(8, 12, 10, 12), std('#1a1d30', { metalness: 0.8, emissive: '#19d3ff', emissiveIntensity: 0.9 }));
+      th.position.y = -TILE_H - 8;
       m.add(th);
     }
     // 糖果：巧克力滴落
     if (theme === THEMES.candy && i % 3 === 0) {
       const drip = new THREE.Mesh(new THREE.CapsuleGeometry(5, 14 + (i % 4) * 6, 4, 8), underMat);
-      drip.position.set(((i * 13) % 20) - 10, -TILE_H - 12, ((i * 7) % 20) - 10);
+      drip.position.set(((i * 13) % 20) - 10, -TILE_H - 14, ((i * 7) % 20) - 10);
       m.add(drip);
     }
     arena.add(m);
@@ -337,7 +337,7 @@ function buildArena(def) {
     const hex = new THREE.Mesh(new THREE.CylinderGeometry(18, 18, 2, 6), gold);
     hex.position.y = 0.2;
     arena.add(hex);
-    const cone = new THREE.Mesh(rockify(new THREE.ConeGeometry(136, 300, 9, 4), 0.08, 3).rotateX(Math.PI), rockMat);
+    const cone = new THREE.Mesh(moundGeo(150, 300).rotateX(Math.PI), rockMat);
     cone.position.y = -TILE_H - 150;
     arena.add(cone);
   } else if (theme === THEMES.space) {
@@ -392,12 +392,12 @@ function addRimOrnaments(def) {
     g.position.set(Math.cos(a) * R, 0, Math.sin(a) * R);
     g.rotation.y = -a;
     if (id === 'lava') {
-      const rock = new THREE.Mesh(rockify(new THREE.DodecahedronGeometry(26, 0), 0.2, i + 70), rockMat);
+      const rock = new THREE.Mesh(blobGeo(26, i + 70, 0.12), rockMat);
       rock.scale.set(1, 0.7, 1);
       rock.position.y = -26;
       g.add(rock);
-      const bowl = new THREE.Mesh(new THREE.CylinderGeometry(18, 11, 14, 10), std('#3a2a2a', { roughness: 0.6, metalness: 0.4 }));
-      bowl.position.y = 2;
+      const bowl = new THREE.Mesh(new THREE.SphereGeometry(17, 20, 10, 0, Math.PI * 2, Math.PI / 2, Math.PI / 2), std('#6a3f33', { roughness: 0.5, side: THREE.DoubleSide }));
+      bowl.position.y = 10;
       g.add(bowl);
       const flameMat = new THREE.MeshBasicMaterial({ color: '#ffb347', transparent: true, opacity: 0.9, blending: THREE.AdditiveBlending, depthWrite: false });
       const flame = new THREE.Mesh(new THREE.ConeGeometry(11, 34, 10), flameMat);
@@ -590,75 +590,308 @@ export function updateLevel(m, dt, t) {
   }
 }
 
+// 圆滚滚的石头 / 冰山：球体加一点点起伏，法线平滑（不再是棱角分明的多面体）
+function blobGeo(r, seed = 1, amt = 0.12, w = 20, h = 14) {
+  const g = new THREE.SphereGeometry(r, w, h);
+  const pos = g.attributes.position;
+  for (let k = 0; k < pos.count; k++) {
+    const x = pos.getX(k) / r;
+    const y = pos.getY(k) / r;
+    const z = pos.getZ(k) / r;
+    const n = Math.sin(x * 2.3 + seed) * Math.cos(z * 2.1 + seed * 1.7) * 0.6 + Math.sin(y * 3.1 + seed * 2.3) * 0.4;
+    const kk = 1 + n * amt;
+    pos.setXYZ(k, pos.getX(k) * kk, pos.getY(k) * kk, pos.getZ(k) * kk);
+  }
+  g.computeVertexNormals();
+  return g;
+}
+// 圆顶的火山 / 雪山：用旋转体画一条圆润的轮廓
+function moundGeo(r, h, crater = 0) {
+  const pts = [];
+  for (let k = 0; k <= 16; k++) {
+    const u = k / 16;
+    const x = r * (1 - u) * (1 - u * 0.25) + crater * u;
+    const y = h * Math.sin((u * Math.PI) / 2);
+    pts.push(new THREE.Vector2(Math.max(x, crater), y));
+  }
+  if (crater) pts.push(new THREE.Vector2(crater * 0.6, h * 0.94));
+  return new THREE.LatheGeometry(pts, 28);
+}
+// 五角星（太空图里一闪一闪的星星）
+function starGeo(r, depth) {
+  const sh = new THREE.Shape();
+  for (let k = 0; k < 10; k++) {
+    const a = (k / 10) * Math.PI * 2 + Math.PI / 2;
+    const rr = k % 2 ? r * 0.48 : r;
+    if (k === 0) sh.moveTo(Math.cos(a) * rr, Math.sin(a) * rr);
+    else sh.lineTo(Math.cos(a) * rr, Math.sin(a) * rr);
+  }
+  const g = new THREE.ExtrudeGeometry(sh, { depth, bevelEnabled: true, bevelThickness: depth * 0.4, bevelSize: r * 0.12, bevelSegments: 3 });
+  g.center();
+  return g;
+}
+// 会动的小装饰：冒烟、闪烁、摇摆
+const decoFx = [];
+const soft = (color, o = {}) => std(color, { roughness: 0.55, ...o });
+
+function snowman(scale = 1) {
+  const g = new THREE.Group();
+  const snowM = soft('#ffffff', { roughness: 0.8 });
+  const coal = soft('#2a2233', { roughness: 0.4 });
+  g.add(mesh(new THREE.SphereGeometry(26, 20, 14), snowM, 0, 22, 0));
+  g.add(mesh(new THREE.SphereGeometry(19, 20, 14), snowM, 0, 54, 0));
+  g.add(mesh(new THREE.SphereGeometry(14, 20, 14), snowM, 0, 80, 0));
+  for (const s of [-1, 1]) g.add(mesh(new THREE.SphereGeometry(2.2, 8, 6), coal, s * 5, 84, 12.5));
+  const nose = mesh(new THREE.ConeGeometry(2.6, 12, 10), soft('#ff8c2a'), 0, 80, 18);
+  nose.rotation.x = Math.PI / 2;
+  g.add(nose);
+  const scarf = mesh(new THREE.TorusGeometry(15, 3.6, 8, 24), soft('#ff5a7a'), 0, 68, 0);
+  scarf.rotation.x = Math.PI / 2;
+  g.add(scarf);
+  for (let k = 0; k < 3; k++) g.add(mesh(new THREE.SphereGeometry(2, 8, 6), coal, 0, 44 + k * 8, 18.5 - k * 0.3));
+  for (const s of [-1, 1]) {
+    const arm = mesh(new THREE.CylinderGeometry(1.4, 1.4, 26, 6), soft('#7a5236'), s * 26, 58, 0);
+    arm.rotation.z = s * 1.0;
+    g.add(arm);
+  }
+  // 小红帽
+  g.add(mesh(new THREE.ConeGeometry(11, 20, 16), soft('#ff5a7a'), 0, 100, 0));
+  g.add(mesh(new THREE.SphereGeometry(4, 10, 8), snowM, 0, 111, 0));
+  g.scale.setScalar(scale);
+  return g;
+}
+function pineTree(scale = 1, snowy = true) {
+  const g = new THREE.Group();
+  g.add(mesh(new THREE.CylinderGeometry(4, 5, 16, 10), soft('#8a5a36'), 0, 8, 0));
+  const green = soft('#3fb07a');
+  const white = soft('#ffffff', { roughness: 0.8 });
+  for (let l = 0; l < 3; l++) {
+    const r = 26 - l * 6;
+    g.add(mesh(new THREE.ConeGeometry(r, 26, 16), green, 0, 26 + l * 15, 0));
+    if (snowy) g.add(mesh(new THREE.ConeGeometry(r * 0.62, 12, 16), white, 0, 34 + l * 15, 0));
+  }
+  g.scale.setScalar(scale);
+  return g;
+}
+function miniPenguin(scale = 1) {
+  const g = new THREE.Group();
+  const body = mesh(new THREE.SphereGeometry(14, 20, 14), soft('#2d3150'), 0, 14, 0);
+  body.scale.set(1, 1.15, 0.95);
+  const belly = mesh(new THREE.SphereGeometry(10, 18, 12), soft('#ffffff'), 0, 12, 5.5);
+  belly.scale.set(1, 1.2, 0.8);
+  g.add(body, belly);
+  for (const s of [-1, 1]) {
+    g.add(mesh(new THREE.SphereGeometry(2.4, 10, 8), soft('#15131f', { roughness: 0.2 }), s * 4.5, 20, 12));
+    g.add(mesh(new THREE.SphereGeometry(0.9, 6, 4), new THREE.MeshBasicMaterial({ color: '#ffffff' }), s * 4.5 + 0.8, 21, 14));
+    const flip = mesh(new THREE.SphereGeometry(5, 10, 8), soft('#2d3150'), s * 13, 12, 0);
+    flip.scale.set(0.35, 1, 0.6);
+    flip.rotation.z = s * 0.4;
+    g.add(flip);
+    const foot = mesh(new THREE.SphereGeometry(4, 10, 6), soft('#ffa53a'), s * 5, 1.5, 4);
+    foot.scale.set(1, 0.4, 1.3);
+    g.add(foot);
+  }
+  const beak = mesh(new THREE.ConeGeometry(2.4, 6, 10), soft('#ffa53a'), 0, 17, 14);
+  beak.rotation.x = Math.PI / 2;
+  g.add(beak);
+  g.scale.setScalar(scale);
+  return g;
+}
+function cupcake(scale = 1, frost = '#ffb3d1') {
+  const g = new THREE.Group();
+  const wrap = mesh(new THREE.CylinderGeometry(34, 26, 34, 18), soft('#6fc7ff', { flatShading: true }), 0, 17, 0);
+  g.add(wrap);
+  const fm = soft(frost, { roughness: 0.35 });
+  g.add(mesh(new THREE.SphereGeometry(36, 20, 12, 0, Math.PI * 2, 0, Math.PI / 2), fm, 0, 34, 0));
+  g.add(mesh(new THREE.SphereGeometry(24, 18, 12), fm, 0, 52, 0));
+  g.add(mesh(new THREE.SphereGeometry(14, 16, 10), fm, 0, 70, 0));
+  g.add(mesh(new THREE.SphereGeometry(8, 14, 10), soft('#ff3b5c', { roughness: 0.2 }), 0, 86, 0));
+  const cols = ['#ffd23f', '#3fa7ff', '#3ddc84', '#ffffff', '#b06cff'];
+  for (let k = 0; k < 14; k++) {
+    const a = k * 2.4;
+    const r = 18 + (k % 3) * 7;
+    const sp = mesh(new THREE.CapsuleGeometry(1.2, 4, 2, 4), soft(cols[k % cols.length]), Math.cos(a) * r, 40 + (k % 4) * 6 + (30 - r) * 0.6, Math.sin(a) * r);
+    sp.rotation.set(k, k * 2, 0);
+    g.add(sp);
+  }
+  g.scale.setScalar(scale);
+  return g;
+}
+function gumdrop(color, scale = 1) {
+  const g = new THREE.Group();
+  const m = new THREE.MeshStandardMaterial({ color, roughness: 0.2, transparent: true, opacity: 0.92, emissive: color, emissiveIntensity: 0.15 });
+  const d = mesh(new THREE.SphereGeometry(20, 20, 12, 0, Math.PI * 2, 0, Math.PI / 2), m);
+  d.scale.y = 1.3;
+  g.add(d);
+  g.add(mesh(new THREE.CylinderGeometry(20, 20, 6, 20), m, 0, -3, 0));
+  g.scale.setScalar(scale);
+  return g;
+}
+function iceCream(scale = 1, scoops = ['#ffb3d1', '#fff2b0', '#b8f0d8']) {
+  const g = new THREE.Group();
+  const cone = mesh(new THREE.ConeGeometry(34, 120, 18), soft('#e8a95e', { flatShading: true }), 0, 60, 0);
+  cone.rotation.x = Math.PI;
+  g.add(cone);
+  scoops.forEach((c, k) => g.add(mesh(new THREE.SphereGeometry(38 - k * 4, 20, 14), soft(c, { roughness: 0.4 }), 0, 128 + k * 50, 0)));
+  g.add(mesh(new THREE.SphereGeometry(9, 12, 10), soft('#ff3b5c', { roughness: 0.2 }), 0, 128 + scoops.length * 50 - 12, 0));
+  g.scale.setScalar(scale);
+  return g;
+}
+// 月亮上的困困脸
+function sleepyFaceTexture() {
+  const c = document.createElement('canvas');
+  c.width = 512;
+  c.height = 256;
+  const g = c.getContext('2d');
+  g.fillStyle = '#f4f1ff';
+  g.fillRect(0, 0, 512, 256);
+  g.fillStyle = 'rgba(190,185,230,0.8)';
+  for (const [x, y, r] of [[80, 60, 22], [420, 180, 30], [330, 50, 14], [150, 200, 18], [470, 80, 12]]) {
+    g.beginPath();
+    g.arc(x, y, r, 0, Math.PI * 2);
+    g.fill();
+  }
+  g.strokeStyle = '#4a3a6a';
+  g.lineWidth = 7;
+  g.lineCap = 'round';
+  for (const x of [226, 286]) {
+    g.beginPath();
+    g.arc(x, 118, 14, 0.15 * Math.PI, 0.85 * Math.PI);
+    g.stroke();
+  }
+  g.beginPath();
+  g.arc(256, 138, 12, 0.2 * Math.PI, 0.8 * Math.PI);
+  g.stroke();
+  g.fillStyle = 'rgba(255,140,180,0.55)';
+  for (const x of [206, 306]) {
+    g.beginPath();
+    g.ellipse(x, 140, 14, 8, 0, 0, Math.PI * 2);
+    g.fill();
+  }
+  const t = new THREE.CanvasTexture(c);
+  t.colorSpace = THREE.SRGBColorSpace;
+  return t;
+}
+
 function buildDecor(id) {
   disposeGroup(decor);
   floaters.length = 0;
+  decoFx.length = 0;
   if (id === 'lava') {
-    const dark = std('#2e2026', { roughness: 1, flatShading: true });
-    for (let i = 0; i < 24; i++) {
-      const a = (i / 24) * Math.PI * 2 + Math.sin(i * 7) * 0.2;
+    // 圆滚滚的岩石堆
+    const rockCols = [soft('#8a5540'), soft('#a0654a'), soft('#74463a')];
+    for (let i = 0; i < 22; i++) {
+      const a = (i / 22) * Math.PI * 2 + Math.sin(i * 7) * 0.2;
       const r = 900 + ((i * 373) % 1100);
-      const h = 180 + ((i * 131) % 420);
-      const m = new THREE.Mesh(rockify(new THREE.CylinderGeometry(22 + (i % 4) * 14, 70 + (i % 5) * 22, h, 7, 4), 0.12, i), i % 3 ? rockMat : dark);
-      m.position.set(Math.cos(a) * r, LIQUID_Y + h / 2 - 10, Math.sin(a) * r);
-      m.rotation.y = i;
-      decor.add(m);
+      const s = 60 + ((i * 131) % 90);
+      const pile = new THREE.Group();
+      const n = 1 + (i % 3);
+      for (let k = 0; k < n; k++) {
+        const b = mesh(blobGeo(s * (1 - k * 0.28), i + k * 5, 0.1), rockCols[(i + k) % 3], (k % 2 ? 0.3 : -0.2) * s * k, s * (0.4 + k * 0.9), 0);
+        b.scale.y = 0.85;
+        pile.add(b);
+      }
+      pile.position.set(Math.cos(a) * r, LIQUID_Y - s * 0.2, Math.sin(a) * r);
+      pile.rotation.y = i;
+      decor.add(pile);
     }
-    // 远处冒火的火山
-    for (let i = 0; i < 4; i++) {
-      const a = i * 1.7 + 0.5;
-      const v = new THREE.Mesh(rockify(new THREE.ConeGeometry(500, 700, 10, 3, true), 0.06, i + 30), dark);
-      v.position.set(Math.cos(a) * 3200, LIQUID_Y + 300, Math.sin(a) * 3200);
+    // 远处圆圆的小火山，山顶冒着一团团烟
+    const volMat = soft('#9a5a44');
+    const lavaTop = new THREE.MeshStandardMaterial({ color: '#ff9a3a', emissive: '#ff6a1a', emissiveIntensity: 1.2 });
+    const smokeMat = soft('#f1e6ee', { roughness: 1, transparent: true, opacity: 0.9 });
+    for (let i = 0; i < 5; i++) {
+      const a = i * 1.26 + 0.5;
+      const R = 2600 + (i % 2) * 700;
+      const h = 520 + (i % 3) * 160;
+      const v = new THREE.Group();
+      v.add(mesh(moundGeo(560, h, 90), volMat));
+      const pool = mesh(new THREE.CircleGeometry(95, 24), lavaTop, 0, h * 0.95, 0);
+      pool.rotation.x = -Math.PI / 2;
+      v.add(pool);
+      // 岩浆顺着山坡流下来的几道
+      for (let k = 0; k < 4; k++) {
+        const drip = mesh(new THREE.CapsuleGeometry(20, 180 + k * 40, 4, 10), lavaTop);
+        const ang = k * 1.6 + i;
+        drip.position.set(Math.cos(ang) * 150, h * 0.72, Math.sin(ang) * 150);
+        drip.rotation.set(Math.sin(ang) * 0.55, 0, -Math.cos(ang) * 0.55);
+        v.add(drip);
+      }
+      v.position.set(Math.cos(a) * R, LIQUID_Y - 20, Math.sin(a) * R);
       decor.add(v);
-      const glow = new THREE.Mesh(new THREE.CircleGeometry(110, 16), new THREE.MeshBasicMaterial({ color: '#ffb040' }));
-      glow.rotation.x = -Math.PI / 2;
-      glow.position.set(v.position.x, LIQUID_Y + 640, v.position.z);
-      decor.add(glow);
+      for (let k = 0; k < 4; k++) {
+        const puff = mesh(new THREE.SphereGeometry(70, 14, 10), smokeMat);
+        puff.castShadow = false;
+        decor.add(puff);
+        decoFx.push({ kind: 'smoke', m: puff, base: new THREE.Vector3(v.position.x, v.position.y + h, v.position.z), ph: k / 4 });
+      }
     }
+    // 在岩浆上漂着的小石头
     for (let i = 0; i < 12; i++) {
-      const m = new THREE.Mesh(rockify(new THREE.DodecahedronGeometry(12 + (i % 4) * 8, 0), 0.15, i + 50), rockMat);
-      m.castShadow = true;
+      const m = mesh(blobGeo(12 + (i % 4) * 7, i + 50, 0.14, 14, 10), rockCols[i % 3]);
       floaters.push({ m, a: (i / 12) * Math.PI * 2, r: 600 + (i % 3) * 70, y: -30 + (i % 4) * 25, sp: 0.03 + (i % 3) * 0.015 });
       decor.add(m);
     }
   } else if (id === 'ice') {
-    const snow = std('#ffffff', { roughness: 0.9, flatShading: true });
-    const iceBlue = std('#bfe8ff', { roughness: 0.15, flatShading: true });
-    const trunkMat = std('#6b4a2e');
-    const leafMats = [std('#2f7a55', { flatShading: true }), std('#ffffff', { flatShading: true })];
-    for (let i = 0; i < 20; i++) {
-      const a = (i / 20) * Math.PI * 2 + Math.sin(i * 3) * 0.3;
+    const snow = soft('#ffffff', { roughness: 0.85 });
+    const iceBlue = soft('#bfe8ff', { roughness: 0.12 });
+    for (let i = 0; i < 18; i++) {
+      const a = (i / 18) * Math.PI * 2 + Math.sin(i * 3) * 0.3;
       const r = 850 + ((i * 419) % 1300);
-      const s = 60 + ((i * 97) % 140);
-      const berg = new THREE.Mesh(rockify(new THREE.DodecahedronGeometry(s, 0), 0.12, i), i % 2 ? snow : iceBlue);
-      berg.scale.y = 0.8 + (i % 3) * 0.3;
-      berg.position.set(Math.cos(a) * r, LIQUID_Y + s * 0.3, Math.sin(a) * r);
-      berg.rotation.y = i;
+      const s = 70 + ((i * 97) % 120);
+      const berg = new THREE.Group();
+      const body = mesh(blobGeo(s, i, 0.1), iceBlue);
+      body.scale.y = 0.6;
+      const cap = mesh(blobGeo(s * 0.92, i + 3, 0.08), snow, 0, s * 0.22, 0);
+      cap.scale.y = 0.42;
+      berg.add(body, cap);
+      berg.position.set(Math.cos(a) * r, LIQUID_Y + s * 0.15, Math.sin(a) * r);
       decor.add(berg);
-      // 冰山上的小松树
+      const topY = berg.position.y + s * 0.55;
       if (i % 3 === 0) {
         for (let k = 0; k < 3; k++) {
-          const tree = new THREE.Group();
-          tree.add(mesh(new THREE.CylinderGeometry(3, 4, 14, 6), trunkMat, 0, 7, 0));
-          for (let l = 0; l < 3; l++) tree.add(mesh(new THREE.ConeGeometry(22 - l * 5, 26, 7), leafMats[l === 2 ? 1 : 0], 0, 22 + l * 14, 0));
-          tree.position.set(berg.position.x + (k - 1) * 30, berg.position.y + s * 0.55 * berg.scale.y, berg.position.z + ((k * 17) % 20) - 10);
+          const tree = pineTree(1.1 + (k % 2) * 0.3);
+          tree.position.set(berg.position.x + (k - 1) * s * 0.4, topY - 6, berg.position.z + ((k * 17) % 20) - 10);
           decor.add(tree);
+        }
+      } else if (i % 3 === 1) {
+        const sm = snowman(0.9 + (i % 2) * 0.3);
+        sm.position.set(berg.position.x, topY - 8, berg.position.z);
+        sm.lookAt(0, sm.position.y, 0);
+        decor.add(sm);
+        decoFx.push({ kind: 'sway', m: sm, ph: i });
+      } else {
+        for (let k = 0; k < 2; k++) {
+          const pg = miniPenguin(1.6);
+          pg.position.set(berg.position.x + (k ? 18 : -18), topY - 6, berg.position.z);
+          pg.lookAt(0, pg.position.y, 0);
+          decor.add(pg);
+          decoFx.push({ kind: 'hop', m: pg, y: pg.position.y, ph: i + k * 1.3 });
         }
       }
     }
-    // 远处的雪山
+    // 远处圆顶雪山
     for (let i = 0; i < 9; i++) {
       const a = (i / 9) * Math.PI * 2 + 0.3;
       const h = 900 + (i % 3) * 350;
-      const mtn = new THREE.Mesh(rockify(new THREE.ConeGeometry(800, h, 8, 3), 0.05, i + 70), i % 2 ? snow : iceBlue);
-      mtn.position.set(Math.cos(a) * 4200, LIQUID_Y + h / 2 - 50, Math.sin(a) * 4200);
+      const mtn = new THREE.Group();
+      mtn.add(mesh(moundGeo(820, h), i % 2 ? soft('#a9dcf7') : soft('#c4e8fb')));
+      const top = mesh(moundGeo(820 * 0.42, h * 0.36), snow, 0, h * 0.64, 0);
+      mtn.add(top);
+      mtn.position.set(Math.cos(a) * 4200, LIQUID_Y - 50, Math.sin(a) * 4200);
       decor.add(mtn);
     }
-    // 漂着的浮冰
+    // 漂着的圆浮冰
     for (let i = 0; i < 10; i++) {
-      const m = new THREE.Mesh(rockify(new THREE.DodecahedronGeometry(14 + (i % 3) * 8, 0), 0.1, i + 90), iceBlue);
-      floaters.push({ m, a: (i / 10) * Math.PI * 2, r: 620 + (i % 3) * 80, y: LIQUID_Y + 6, sp: 0.02 + (i % 3) * 0.01, bob: true });
-      decor.add(m);
+      const floe = new THREE.Group();
+      floe.add(mesh(new THREE.CylinderGeometry(22 + (i % 3) * 8, 20 + (i % 3) * 8, 8, 20), iceBlue));
+      floe.add(mesh(new THREE.CylinderGeometry(18 + (i % 3) * 8, 21 + (i % 3) * 8, 4, 20), snow, 0, 5, 0));
+      if (i % 4 === 0) {
+        const pg = miniPenguin(0.9);
+        pg.position.y = 7;
+        floe.add(pg);
+      }
+      floaters.push({ m: floe, a: (i / 10) * Math.PI * 2, r: 620 + (i % 3) * 80, y: LIQUID_Y + 6, sp: 0.02 + (i % 3) * 0.01, bob: true, upright: true });
+      decor.add(floe);
     }
   } else if (id === 'space') {
     // 脚下的巨大星球 + 光环
@@ -666,46 +899,82 @@ function buildDecor(id) {
     pc.width = 512;
     pc.height = 256;
     const g = pc.getContext('2d');
-    const bands = ['#5b3fb8', '#7a5cff', '#c77dff', '#ff9e7a', '#7a5cff', '#3f2e8f', '#9d7bff', '#ffb38a'];
+    const bands = ['#7a5cff', '#9d7bff', '#ffb3d9', '#ffd1a8', '#9d7bff', '#6a58e0', '#c2a8ff', '#ffc2e0'];
     for (let y = 0; y < 256; y += 4) {
       g.fillStyle = bands[Math.floor((y / 256) * bands.length * 2 + Math.sin(y * 0.1) * 1.2 + 16) % bands.length];
       g.fillRect(0, y, 512, 4);
     }
     const ptex = new THREE.CanvasTexture(pc);
     ptex.colorSpace = THREE.SRGBColorSpace;
-    const planet = new THREE.Mesh(new THREE.SphereGeometry(2200, 64, 32), std('#ffffff', { map: ptex, roughness: 0.9, emissive: '#2a1660', emissiveIntensity: 0.6 }));
+    const planet = new THREE.Mesh(new THREE.SphereGeometry(2200, 64, 32), std('#ffffff', { map: ptex, roughness: 0.9, emissive: '#2a1660', emissiveIntensity: 0.5 }));
     planet.position.set(600, -3600, -2600);
     planet.rotation.z = 0.35;
     decor.add(planet);
     const ring = new THREE.Mesh(
       new THREE.RingGeometry(2700, 3600, 96),
-      new THREE.MeshBasicMaterial({ map: stripeTexture(['#c9b8ff', '#8a74e0', '#e8d9ff', '#6a58c0'], 6), transparent: true, opacity: 0.55, side: THREE.DoubleSide, depthWrite: false })
+      new THREE.MeshBasicMaterial({ map: stripeTexture(['#d9ccff', '#a18cf0', '#ffe0f0', '#8a74e0'], 6), transparent: true, opacity: 0.55, side: THREE.DoubleSide, depthWrite: false })
     );
     ring.position.copy(planet.position);
     ring.rotation.set(-Math.PI / 2 + 0.25, 0, 0.35);
     decor.add(ring);
-    const moon = new THREE.Mesh(new THREE.SphereGeometry(260, 32, 16), std('#cfd3e6', { roughness: 1, flatShading: true }));
-    moon.position.set(-3000, 900, -4200);
+    // 困困的月亮
+    const moon = new THREE.Mesh(new THREE.SphereGeometry(300, 40, 24), std('#ffffff', { map: sleepyFaceTexture(), roughness: 0.9, emissive: '#6a5aa0', emissiveIntensity: 0.25 }));
+    moon.position.set(-3000, 1000, -4200);
+    moon.lookAt(0, 200, 0);
+    moon.rotateY(-Math.PI / 2);
     decor.add(moon);
-    const astMat = std('#6e6a82', { roughness: 1, flatShading: true });
-    for (let i = 0; i < 26; i++) {
-      const m = new THREE.Mesh(rockify(new THREE.DodecahedronGeometry(10 + (i % 5) * 9, 0), 0.18, i + 11), astMat);
-      m.castShadow = true;
-      floaters.push({ m, a: (i / 26) * Math.PI * 2, r: 640 + (i % 4) * 110, y: -120 + ((i * 53) % 220), sp: 0.02 + (i % 3) * 0.012 });
+    // 远处几颗糖果色的小星球
+    const minis = [
+      ['#ff9ec7', '#ffe0f0'],
+      ['#7fe0c8', '#d8fff2'],
+      ['#ffd27a', '#fff2cc'],
+      ['#9fb4ff', '#e0e8ff'],
+      ['#c8a0ff', '#f0e0ff'],
+    ];
+    minis.forEach(([c, rc], k) => {
+      const grp = new THREE.Group();
+      const r = 90 + (k % 3) * 50;
+      grp.add(mesh(new THREE.SphereGeometry(r, 32, 20), soft(c, { emissive: c, emissiveIntensity: 0.25 })));
+      if (k % 2 === 0) {
+        const rg = mesh(new THREE.TorusGeometry(r * 1.55, r * 0.12, 8, 48), soft(rc, { emissive: rc, emissiveIntensity: 0.3 }));
+        rg.rotation.x = Math.PI / 2 - 0.4;
+        grp.add(rg);
+      }
+      const a = (k / minis.length) * Math.PI * 2 + 0.6;
+      grp.position.set(Math.cos(a) * 2600, 300 + (k % 3) * 400, Math.sin(a) * 2600);
+      decor.add(grp);
+      decoFx.push({ kind: 'spin', m: grp, sp: 0.1 + k * 0.03 });
+    });
+    // 一闪一闪的小星星
+    const starMat = new THREE.MeshStandardMaterial({ color: '#ffe27a', emissive: '#ffcc33', emissiveIntensity: 1.0, roughness: 0.3 });
+    const sg = starGeo(16, 5);
+    for (let i = 0; i < 16; i++) {
+      const st = new THREE.Mesh(sg, starMat);
+      const a = (i / 16) * Math.PI * 2;
+      const r = 700 + (i % 4) * 160;
+      st.position.set(Math.cos(a) * r, -40 + ((i * 53) % 260), Math.sin(a) * r);
+      decor.add(st);
+      decoFx.push({ kind: 'twinkle', m: st, ph: i * 0.9, s: 0.8 + (i % 3) * 0.4 });
+    }
+    // 圆圆的小陨石
+    const astMats = [soft('#8e86b8'), soft('#a79fd0'), soft('#7a72a6')];
+    for (let i = 0; i < 20; i++) {
+      const m = mesh(blobGeo(10 + (i % 5) * 8, i + 11, 0.16, 14, 10), astMats[i % 3]);
+      floaters.push({ m, a: (i / 20) * Math.PI * 2, r: 640 + (i % 4) * 110, y: -120 + ((i * 53) % 220), sp: 0.02 + (i % 3) * 0.012 });
       decor.add(m);
     }
     // 空间站外围的信号塔
-    const towerMat = std('#3a4160', { metalness: 0.7, roughness: 0.4 });
+    const towerMat = std('#5a62a0', { metalness: 0.5, roughness: 0.35 });
     for (let i = 0; i < 6; i++) {
       const a = (i / 6) * Math.PI * 2 + Math.PI / 6;
       const tower = new THREE.Group();
-      tower.add(mesh(new THREE.CylinderGeometry(6, 10, 220, 8), towerMat));
-      tower.add(mesh(new THREE.SphereGeometry(12, 12, 8), new THREE.MeshBasicMaterial({ color: i % 2 ? '#ff4d6d' : '#19d3ff' }), 0, 116, 0));
+      tower.add(mesh(new THREE.CylinderGeometry(6, 10, 220, 12), towerMat));
+      tower.add(mesh(new THREE.SphereGeometry(13, 16, 12), new THREE.MeshBasicMaterial({ color: i % 2 ? '#ff7ab0' : '#19d3ff' }), 0, 116, 0));
       tower.position.set(Math.cos(a) * 640, -60, Math.sin(a) * 640);
       decor.add(tower);
     }
   } else if (id === 'candy') {
-    // 棒棒糖、拐杖糖、甜甜圈、棉花糖云
+    // 棒棒糖树、拐杖糖、纸杯蛋糕、软糖、冰淇淋、甜甜圈、棉花糖云
     const cols = [
       ['#ff5aa5', '#ffffff'],
       ['#3fa7ff', '#ffffff'],
@@ -713,15 +982,18 @@ function buildDecor(id) {
       ['#3ddc84', '#ffffff'],
     ];
     const stickMat = std('#ffffff', { roughness: 0.4 });
-    for (let i = 0; i < 14; i++) {
-      const a = (i / 14) * Math.PI * 2 + 0.2;
+    for (let i = 0; i < 12; i++) {
+      const a = (i / 12) * Math.PI * 2 + 0.2;
       const r = 900 + ((i * 347) % 1100);
       const h = 260 + ((i * 89) % 260);
       const lolly = new THREE.Group();
-      lolly.add(mesh(new THREE.CylinderGeometry(6, 6, h, 8), stickMat, 0, h / 2, 0));
-      const disc = mesh(new THREE.CylinderGeometry(70, 70, 22, 32), std('#ffffff', { map: swirlTexture(cols[i % cols.length]), roughness: 0.25 }), 0, h + 60, 0);
+      lolly.add(mesh(new THREE.CylinderGeometry(6, 6, h, 10), stickMat, 0, h / 2, 0));
+      const disc = mesh(new THREE.CylinderGeometry(70, 70, 22, 36), std('#ffffff', { map: swirlTexture(cols[i % cols.length]), roughness: 0.2 }), 0, h + 60, 0);
       disc.rotation.x = Math.PI / 2;
       lolly.add(disc);
+      const bow = mesh(new THREE.TorusGeometry(10, 4, 8, 16), soft(cols[(i + 1) % cols.length][0]), 0, h - 6, 0);
+      bow.rotation.x = Math.PI / 2;
+      lolly.add(bow);
       lolly.position.set(Math.cos(a) * r, LIQUID_Y, Math.sin(a) * r);
       lolly.rotation.y = -a + Math.PI / 2;
       lolly.rotation.z = Math.sin(i) * 0.15;
@@ -730,14 +1002,35 @@ function buildDecor(id) {
     const caneTex = stripeTexture(['#ff3b5c', '#ffffff'], 10);
     caneTex.repeat.set(8, 1);
     const caneMat = std('#ffffff', { map: caneTex, roughness: 0.35 });
-    for (let i = 0; i < 8; i++) {
-      const a = (i / 8) * Math.PI * 2 + 0.6;
+    for (let i = 0; i < 6; i++) {
+      const a = (i / 6) * Math.PI * 2 + 0.6;
       const cane = new THREE.Group();
-      cane.add(mesh(new THREE.CylinderGeometry(12, 12, 380, 12), caneMat, 0, 190, 0));
-      cane.add(mesh(new THREE.TorusGeometry(50, 12, 10, 20, Math.PI), caneMat, -50, 380, 0));
+      cane.add(mesh(new THREE.CylinderGeometry(12, 12, 380, 14), caneMat, 0, 190, 0));
+      cane.add(mesh(new THREE.TorusGeometry(50, 12, 12, 24, Math.PI), caneMat, -50, 380, 0));
       cane.position.set(Math.cos(a) * 1500, LIQUID_Y, Math.sin(a) * 1500);
       cane.rotation.y = a;
       decor.add(cane);
+    }
+    const frosts = ['#ffb3d1', '#fff0b3', '#b8f0d8', '#d9c4ff', '#ffffff'];
+    for (let i = 0; i < 9; i++) {
+      const a = (i / 9) * Math.PI * 2 + 0.35;
+      const cc = cupcake(1.6 + (i % 3) * 0.5, frosts[i % frosts.length]);
+      cc.position.set(Math.cos(a) * (1000 + (i % 3) * 260), LIQUID_Y - 10, Math.sin(a) * (1000 + (i % 3) * 260));
+      decor.add(cc);
+    }
+    const gumCols = ['#ff5aa5', '#ffd23f', '#3ddc84', '#3fa7ff', '#b06cff', '#ff8c42'];
+    for (let i = 0; i < 14; i++) {
+      const a = (i / 14) * Math.PI * 2 + 0.1;
+      const gd = gumdrop(gumCols[i % gumCols.length], 1.4 + (i % 3) * 0.6);
+      gd.position.set(Math.cos(a) * (760 + (i % 4) * 120), LIQUID_Y + 2, Math.sin(a) * (760 + (i % 4) * 120));
+      decor.add(gd);
+      decoFx.push({ kind: 'jiggle', m: gd, ph: i, s: gd.scale.x });
+    }
+    for (let i = 0; i < 4; i++) {
+      const a = (i / 4) * Math.PI * 2 + 1.0;
+      const ic = iceCream(2.2, i % 2 ? ['#b8f0d8', '#ffb3d1', '#fff2b0'] : ['#8b5a3c', '#ffb3d1', '#ffffff']);
+      ic.position.set(Math.cos(a) * 2300, LIQUID_Y - 40, Math.sin(a) * 2300);
+      decor.add(ic);
     }
     const dough = std('#e8b36a', { roughness: 0.7 });
     const icing = ['#ff8fc0', '#8b4a2b', '#b8f0ff', '#fff27a'].map((c) => std(c, { roughness: 0.3 }));
@@ -755,13 +1048,16 @@ function buildDecor(id) {
     const cloudMats = [std('#ffd6ec', { roughness: 1 }), std('#d6ecff', { roughness: 1 })];
     for (let i = 0; i < 8; i++) {
       const cloud = new THREE.Group();
-      for (let k = 0; k < 5; k++) cloud.add(mesh(new THREE.SphereGeometry(80 + (k % 3) * 30, 12, 8), cloudMats[i % 2], k * 70 - 140, Math.sin(k) * 30, 0));
+      for (let k = 0; k < 5; k++) cloud.add(mesh(new THREE.SphereGeometry(80 + (k % 3) * 30, 16, 10), cloudMats[i % 2], k * 70 - 140, Math.sin(k) * 30, 0));
       const a = (i / 8) * Math.PI * 2;
       cloud.position.set(Math.cos(a) * 3000, 700 + (i % 3) * 200, Math.sin(a) * 3000);
       cloud.lookAt(0, cloud.position.y, 0);
       decor.add(cloud);
     }
   }
+  decor.traverse((o) => {
+    if (o.isMesh) o.castShadow = false;
+  });
 }
 
 export function applyMap(def) {
@@ -932,9 +1228,28 @@ export function updateArena(dt, t) {
     f.a += f.sp * dt;
     f.m.position.set(Math.cos(f.a) * f.r, f.y + (f.bob ? Math.sin(t * 1.5 + f.r) * 3 : Math.sin(t + f.r) * 8), Math.sin(f.a) * f.r);
     if (f.flat) f.m.rotation.z += dt * 0.3;
+    else if (f.upright) f.m.rotation.y += dt * 0.25;
     else {
       f.m.rotation.x += dt * 0.2;
       f.m.rotation.y += dt * 0.3;
+    }
+  }
+  for (const d of decoFx) {
+    if (d.kind === 'smoke') {
+      // 火山口的烟：一团团往上飘、变大、变淡，然后从头再来
+      const k = (t * 0.12 + d.ph) % 1;
+      d.m.position.set(d.base.x + Math.sin(k * 6 + d.ph * 9) * 60, d.base.y + k * 700, d.base.z + k * 120);
+      d.m.scale.setScalar(0.5 + k * 1.6);
+      d.m.material.opacity = 0.85 * (1 - k);
+    } else if (d.kind === 'twinkle') {
+      d.m.rotation.y += dt * 1.2;
+      d.m.scale.setScalar(d.s * (0.8 + 0.25 * Math.sin(t * 3 + d.ph)));
+    } else if (d.kind === 'sway') d.m.rotation.z = Math.sin(t * 1.3 + d.ph) * 0.06;
+    else if (d.kind === 'hop') d.m.position.y = d.y + Math.max(0, Math.sin(t * 3 + d.ph)) * 10;
+    else if (d.kind === 'spin') d.m.rotation.y += dt * d.sp;
+    else if (d.kind === 'jiggle') {
+      const k = Math.sin(t * 2.4 + d.ph) * 0.05;
+      d.m.scale.set(d.s * (1 + k), d.s * (1 - k), d.s * (1 + k));
     }
   }
 }

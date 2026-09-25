@@ -221,13 +221,13 @@ function showcaseSlots(s) {
   // 大厅：4 人以内一排，更多人分前后两排（后排站高一点）
   const n = list.length;
   const front = n > 4 ? Math.ceil(n / 2) : n;
-  const gap = n > 4 ? 84 : 100;
+  const gap = n > 4 ? 92 : 100;
   return list.map((p, i) => {
     const back = i >= front;
     const k = back ? i - front : i;
     const cnt = back ? n - front : front;
     const x = (k - (cnt - 1) / 2) * gap + (back && cnt === front ? gap / 2 : 0);
-    return { p, x, z: back ? -95 : 0, h: back ? 46 : 20, rank: 0 };
+    return { p, x, z: back ? -105 : 0, h: back ? 62 : 20, rank: 0 };
   });
 }
 // 大厅 / 结算两侧有面板时，展示区只占屏幕中间一部分：frac = 可见宽度占比，offset = 可见区中心相对屏幕中心的偏移（占屏宽比例）
@@ -919,6 +919,12 @@ export function playEvents(events) {
         const p = pos(ev.victim);
         if (p) popText(p.x, 80, p.z, 'KO!', '#ff5a5f', 30);
         if (ev.id === myId) sfx.ko();
+        break;
+      }
+      case 'grab': {
+        const info = ITEMS[ev.item];
+        burst(ev.x, 20, ev.y, info.color, 14, 120, 6);
+        if (ev.id === myId) sfx.ready();
         break;
       }
       case 'pickup': {

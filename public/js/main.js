@@ -9,6 +9,7 @@ import { settings, saveSettings, profile, saveProfile, playerName, setPlayerName
 import { CHARACTERS, SKINS, HATS, COLORS, MAPS, MODES, ITEMS, TEAM_COLORS, TEAM_NAMES, BOT_LEVELS, charInfo } from './data.js';
 import { input } from './input.js';
 import { STICKER_MAP, stickerSVG } from './stickers.js';
+import { CHANGELOG } from './changelog.js';
 import { $, esc, fmtTime, show, current, avatarHTML, notice, modal, closeModal, modalOpen, initEmotes, toggleEmotes, hideEmotes, copyText, setHTML } from './ui.js';
 
 const MAP_IDS = Object.keys(MAPS);
@@ -367,10 +368,10 @@ function uiEvents(events) {
       case 'crownDrop':
         killfeed(tr('👑 {0} 掉了皇冠', nameTag(ev.id)));
         break;
-      case 'pickup':
+      case 'grab':
         if (ev.id === myId) {
           const it = ITEMS[ev.item];
-          toast(`${it.icon} ${it.name}<br><small>${it.desc}</small>`, 1600);
+          toast(`${it.icon} ${it.name}<br><small>${it.desc}<br>${isTouch ? tr('点右下角的道具按钮使用') : tr('按 F 使用（或点左下角的道具栏）')}</small>`, 2200);
         }
         break;
       case 'bossWindup':
@@ -451,7 +452,7 @@ function toggleView() {
   world.setCameraMode(settings.view);
   if (settings.view === '1p') {
     faceObjective();
-    notice(isTouch ? tr('第一人称：左边摇杆移动，右半屏左右拖动转向') : tr('第一人称：WASD 移动，鼠标 / ←→ / Q E 转向（点一下画面锁定鼠标，Esc 解锁）'));
+    notice(isTouch ? tr('第一人称：左边摇杆移动，右半屏左右拖动转向') : tr('第一人称：WASD 移动，按住鼠标左右拖动 / ←→ / Q E 转向（点一下画面可以锁定鼠标，Esc 解锁）'));
   } else {
     if (document.pointerLockElement) document.exitPointerLock();
     notice(tr('已切换到第三人称'));
@@ -686,7 +687,38 @@ function paintBar() {
   return `<div class="paint-bar">${segs}</div>`;
 }
 
+// 道具栏：捡到的道具放在这里，按 F / 点一下才用
+let slotItem = '';
+function updateItemSlot(m) {
+  const s = state;
+  const on = current === 'game' && s && inRound(s.phase) && s.settings.items && s.settings.mode !== 'rope' && m && m.alive;
+  const el = $('itemSlot');
+  el.classList.toggle('hidden', !on);
+  if (!on) return;
+  const it = m.item || '';
+  if (it === slotItem) return;
+  slotItem = it;
+  el.classList.toggle('has', !!it);
+  el.querySelector('.ico').textContent = it ? ITEMS[it].icon : '';
+  el.title = it ? `${ITEMS[it].name}：${ITEMS[it].desc}（F）` : tr('道具栏（捡到的道具会放在这里）');
+  if (it) {
+    el.classList.remove('pop');
+    void el.offsetWidth;
+    el.classList.add('pop');
+  }
+}
+function useItem() {
+  if (!state || !inRound(state.phase) || !slotItem) return;
+  send({ t: 'use' });
+}
+$('itemSlot').addEventListener('pointerdown', (e) => {
+  e.preventDefault();
+  e.stopPropagation();
+  useItem();
+});
+
 function updateTouchUI(m) {
+  updateItemSlot(m);
   const show = isTouch && current === 'game' && state && inRound(state.phase) && m && m.alive;
   $('touchUI').classList.toggle('hidden', !show);
   document.body.classList.toggle('touch', isTouch);
@@ -867,9 +899,10 @@ function renderLobby() {
     btn.className = 'btn btn-yellow btn-xl' + (readyN === others.length ? ' pulse' : '');
     setHTML($('readyInfo'), others.length ? tr('✔ 已准备 {0}/{1}', readyN, others.length) : n < 2 ? tr('可以添加机器人一起玩') : '');
   } else if (m) {
-    btn.textContent = m.ready ? tr('取消准备') : tr('准备！');
-    btn.className = 'btn btn-xl ' + (m.ready ? 'btn-ghost' : 'btn-green pulse');
-    setHTML($('readyInfo'), m.ready ? tr('等待房主开始…') : tr('点「准备」告诉房主你好了'));
+    btn.textContent = m.ready ? tr('✔ 已准备') : tr('准备！');
+    btn.className = 'btn btn-xl ' + (m.ready ? 'btn-green is-ready' : 'btn-green pulse');
+    btn.title = m.ready ? tr('再点一下取消准备') : '';
+    setHTML($('readyInfo'), m.ready ? tr('等待房主开始…（再点一下取消准备）') : tr('点「准备」告诉房主你好了'));
   }
 }
 
@@ -1247,10 +1280,35 @@ $('btnUpdate').onclick = () => openUpdate();
 async function showLanHint() {
   const inf = await getInfo();
   const el = $('lanHint');
+  // 开服的电脑：页面顶部显示局域网地址，一键复制发给朋友
+  const lanUrl = isLocalHost(location.hostname) && inf.lan.length ? `http://${inf.lan[0]}:${location.port || inf.port}` : '';
+  $('lanPill').classList.toggle('hidden', !lanUrl);
+  $('scr-menu').classList.toggle('has-lan', !!lanUrl);
+  $('lanUrl').textContent = lanUrl.replace('http://', '');
+  $('lanPill').dataset.url = lanUrl;
   if (!isLocalHost(location.hostname)) el.innerHTML = tr('已连接到 <b>{0}</b> · v{1}', esc(location.host), esc(inf.version || ''));
-  else if (inf.lan.length) el.innerHTML = tr('📶 同一 Wi-Fi 的朋友打开 <b>http://{0}:{1}</b> 就能一起玩', esc(inf.lan[0]), esc(location.port || inf.port));
   else el.innerHTML = `v${esc(inf.version || '')}`;
 }
+$('lanCopy').onclick = async () => {
+  const url = $('lanPill').dataset.url;
+  if (!url) return;
+  await copyText(url);
+  const b = $('lanCopy');
+  b.textContent = tr('✔ 已复制');
+  b.classList.add('done'); // 按钮本身变成「✔ 已复制」，不再弹通知（通知会挡住网址条）
+  setTimeout(() => {
+    b.textContent = tr('📋 复制');
+    b.classList.remove('done');
+  }, 1800);
+};
+$('lanQR').onclick = () => {
+  const url = $('lanPill').dataset.url;
+  if (!url) return;
+  const box = document.createElement('div');
+  box.className = 'invite-box';
+  box.innerHTML = `${qrBlock(url)}<p class="hint">${tr('同一 Wi-Fi 下，手机扫码就能打开游戏')}</p><div class="link-box">${esc(url)}</div>`;
+  modal({ title: tr('📶 邀请同一 Wi-Fi 的朋友'), body: box, actions: [{ label: tr('📋 复制'), cls: 'btn-blue', onClick: () => copyText(url).then(() => notice(tr('网址已复制，粘贴发给同一个 Wi-Fi 的朋友吧'))) }, { label: tr('关闭') }] });
+};
 
 // ---------------------------------------------------------------------
 // 局域网房间列表
@@ -1468,7 +1526,7 @@ async function renderHelp() {
   let html = '';
   if (helpTab === 'controls') {
     html = [
-      card('⌨️', tr('电脑'), tr('<span class="keys">W</span><span class="keys">A</span><span class="keys">S</span><span class="keys">D</span> 或方向键移动<br><span class="keys">空格</span> / <span class="keys">Shift</span> / <span class="keys">J</span> 冲刺<br><span class="keys">1</span>~<span class="keys">8</span> 发表情　<span class="keys">T</span> 嘲讽贴图　<span class="keys">Esc</span> 菜单<br>大厅里按 <span class="keys">回车</span> 聊天')),
+      card('⌨️', tr('电脑'), tr('<span class="keys">W</span><span class="keys">A</span><span class="keys">S</span><span class="keys">D</span> 或方向键移动<br><span class="keys">空格</span> / <span class="keys">Shift</span> / <span class="keys">J</span> 冲刺<br><span class="keys">F</span> 使用道具　<span class="keys">1</span>~<span class="keys">8</span> 发表情　<span class="keys">T</span> 嘲讽贴图　<span class="keys">Esc</span> 菜单<br>大厅里按 <span class="keys">回车</span> 聊天')),
       card('📱', tr('手机'), tr('左半边屏幕按住拖动 = 摇杆<br>右下角红色大按钮 = 冲刺<br>横屏玩体验更好')),
       card('💥', tr('撞人技巧'), tr('冲刺撞人最狠，冷却 1.2 秒。脚下光圈<b style="display:inline;color:#ffd23f">变黄</b>就能再冲。<br>速度越快、体重越大，撞得越远。')),
       card('🧠', tr('小心'), tr('冰面很滑，停不下来；香蕉皮会让你打滑；被冻住时谁都能推你。靠近边缘时别乱冲！')),
@@ -1481,7 +1539,7 @@ async function renderHelp() {
     html = Object.values(ITEMS)
       .map((it) => card(it.icon, it.name, it.desc))
       .join('');
-    html += card('❓', tr('说明'), tr('道具会随机刷在场地上，碰到就生效。房主可以在房间设置里关闭道具。'));
+    html += card('❓', tr('说明'), tr('道具会随机刷在场地上，碰到就放进道具栏，按 F（手机点道具按钮）才会用出来。一次只能拿一个，掉下去就没了。房主可以在房间设置里关闭道具。'));
   } else if (helpTab === 'maps') {
     html = MAP_IDS.map((id) => card(MAPS[id].icon, MAPS[id].name, MAPS[id].desc)).join('');
   } else {
@@ -1581,6 +1639,14 @@ function openSettings() {
     openUpdate(true);
   };
   box.appendChild(ver);
+  const wn = document.createElement('div');
+  wn.className = 'range-row';
+  wn.innerHTML = `<span>${tr("📰 更新内容")}</span><span style="flex:1"></span><button class="btn btn-mini btn-purple">${tr('看看更新了什么')}${whatsNewUnseen() ? ' <b class="new-tag">NEW</b>' : ''}</button>`;
+  wn.querySelector('button').onclick = () => {
+    closeModal(true);
+    openWhatsNew();
+  };
+  box.appendChild(wn);
   const actions = [{ label: tr('完成'), cls: 'btn-yellow' }];
   if (document.fullscreenEnabled) {
     actions.unshift({
@@ -1590,6 +1656,47 @@ function openSettings() {
     });
   }
   modal({ title: tr('⚙️ 设置'), body: box, actions });
+}
+
+// ---------------------------------------------------------------------
+// 更新内容（What's New）
+// ---------------------------------------------------------------------
+const SEEN_KEY = 'bb_seen_version';
+const latestLog = CHANGELOG[0].v;
+function seenVersion() {
+  try {
+    return localStorage.getItem(SEEN_KEY) || '';
+  } catch {
+    return latestLog;
+  }
+}
+const whatsNewUnseen = () => seenVersion() !== latestLog;
+function markWhatsNewSeen() {
+  try {
+    localStorage.setItem(SEEN_KEY, latestLog);
+  } catch {
+    /* 无痕模式 */
+  }
+  $('btnSettings').classList.remove('has-new');
+}
+function openWhatsNew() {
+  const box = document.createElement('div');
+  box.className = 'whats-new';
+  box.innerHTML = CHANGELOG.map((e, i) => {
+    const items = (lang === 'en' ? e.en : e.zh).map((x) => `<li>${esc(x)}</li>`).join('');
+    const head = `<span class="wn-ver">v${esc(e.v)}</span>${i === 0 ? `<span class="wn-latest">${tr('最新')}</span>` : ''}<span class="wn-date">${esc(e.date)}</span>`;
+    return i === 0 ? `<section class="wn-entry latest"><h4>${head}</h4><ul>${items}</ul></section>` : `<details class="wn-entry"><summary>${head}</summary><ul>${items}</ul></details>`;
+  }).join('');
+  markWhatsNewSeen();
+  modal({ title: tr("📰 更新内容"), body: box, actions: [{ label: tr('好的'), cls: 'btn-yellow' }] });
+}
+// 第一次打开游戏不打扰；更新到新版本后自动弹一次，设置按钮上也有小红点
+function checkWhatsNew() {
+  const seen = seenVersion();
+  if (!seen) return markWhatsNewSeen();
+  if (seen === latestLog) return;
+  $('btnSettings').classList.add('has-new');
+  if (current === 'menu' && !modalOpen()) setTimeout(() => current === 'menu' && !modalOpen() && openWhatsNew(), 1200);
 }
 
 function openPause() {
@@ -1713,6 +1820,7 @@ window.addEventListener('keydown', (e) => {
     hideEmotes();
   }
   if (e.code === 'KeyV' && inRoom && current === 'game') toggleView();
+  if (e.code === 'KeyF' && inRoom && current === 'game') useItem();
   if (e.code === 'KeyT' && inRoom && (current === 'game' || current === 'lobby' || current === 'results')) {
     sendSticker(lastSticker);
     hideEmotes();
@@ -1768,6 +1876,7 @@ const unlockOnce = () => unlock();
 window.addEventListener('pointerdown', unlockOnce);
 window.addEventListener('keydown', unlockOnce);
 
+setTimeout(checkWhatsNew, 1500);
 document.documentElement.lang = lang === 'en' ? 'en' : 'zh-CN';
 // 手机上没有"回车"，聊天框提示改短一点（要在 applyStatic 记录原文之前改）
 if (isTouch) $('chatInput').setAttribute('placeholder', '说点什么…');

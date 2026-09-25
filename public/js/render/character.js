@@ -246,10 +246,10 @@ function makeHat(id, color) {
       break;
     }
     case 'headphones': {
-      const band = mesh(new THREE.TorusGeometry(1.0, 0.07, 8, 24, Math.PI), black, 0, 0.12, 0);
+      const band = mesh(new THREE.TorusGeometry(1.08, 0.07, 8, 32, Math.PI), black, 0, 0.12, 0);
       g.add(band);
       for (const s of [-1, 1]) {
-        const cup = mesh(new THREE.CylinderGeometry(0.28, 0.28, 0.2, 16), tint, s * 1.0, 0.12, 0);
+        const cup = mesh(new THREE.CylinderGeometry(0.28, 0.28, 0.2, 20), tint, s * 1.08, 0.12, 0);
         cup.rotation.z = Math.PI / 2;
         g.add(cup);
       }
@@ -310,7 +310,7 @@ export class Character {
     }
     // 身体稍微扁一点、下面宽一点，像麻薯
     const shell = new THREE.Group();
-    shell.scale.set(1.05, 0.95, 1.0);
+    shell.scale.set(1.0, 0.94, 0.98); // 身体宽度 = 物理半径，碰撞时不会互相穿进去
     body.add(shell);
     shell.add(mesh(bodyGeo, this.bodyMat));
     // 浅色肚皮（纯色类皮肤才有）：贴在球面上的柔和椭圆
@@ -361,8 +361,11 @@ export class Character {
     if (char === 'robot') {
       const metal = std('#aab2cc', { metalness: 0.85, roughness: 0.28 });
       // 天线 + 发光小球
-      shell.add(mesh(new THREE.CylinderGeometry(0.035, 0.035, 0.36, 8), metal, 0, 1.12, 0));
+      const stalk = mesh(new THREE.CylinderGeometry(0.035, 0.035, 0.36, 8), metal, 0, 1.12, 0);
+      stalk.userData.top = 'tuft';
+      shell.add(stalk);
       const bulb = mesh(new THREE.SphereGeometry(0.11, 16, 12), new THREE.MeshStandardMaterial({ color: '#ff5a7a', emissive: '#ff3a6a', emissiveIntensity: 1.2 }), 0, 1.34, 0);
+      bulb.userData.top = 'tuft';
       shell.add(bulb);
       // 圆圆的耳朵
       for (const s of [-1, 1]) {
@@ -395,6 +398,7 @@ export class Character {
           const inner = mesh(new THREE.ConeGeometry(0.19, 0.34, 20), pinkSoft, 0, 0.12, 0.11);
           inner.scale.z = 0.4;
           ear.add(outer, inner);
+          ear.userData.top = 'ear';
           shell.add(ear);
         }
         const curve = new THREE.CatmullRomCurve3([new THREE.Vector3(0, -0.4, -0.9), new THREE.Vector3(0, -0.1, -1.3), new THREE.Vector3(0.25, 0.4, -1.4), new THREE.Vector3(0.3, 0.7, -1.15)]);
@@ -405,10 +409,13 @@ export class Character {
       case 'bean': {
         // 头顶一根弯弯的呆毛 + 小叶子
         const curl = new THREE.CatmullRomCurve3([new THREE.Vector3(0, 0.9, 0.05), new THREE.Vector3(0.02, 1.16, 0.08), new THREE.Vector3(0.18, 1.26, 0.02), new THREE.Vector3(0.24, 1.12, -0.02)]);
-        shell.add(mesh(new THREE.TubeGeometry(curl, 16, 0.045, 8), darkAccent));
+        const curlM = mesh(new THREE.TubeGeometry(curl, 16, 0.045, 8), darkAccent);
+        curlM.userData.top = 'tuft';
+        shell.add(curlM);
         const leaf = mesh(new THREE.SphereGeometry(0.13, 16, 10), vinyl('#6fdc6a', { vertexColors: false }), 0.25, 1.1, -0.02);
         leaf.scale.set(1, 0.45, 0.6);
         leaf.rotation.z = -0.6;
+        leaf.userData.top = 'tuft';
         shell.add(leaf);
         break;
       }
@@ -462,6 +469,7 @@ export class Character {
         ]) {
           const f = mesh(new THREE.CapsuleGeometry(0.045, len, 6, 10), tuft, x, 0.98 + len * 0.3, 0.05);
           f.rotation.z = rz;
+          f.userData.top = 'tuft';
           shell.add(f);
         }
         for (const s of [-1, 1]) {
@@ -478,6 +486,7 @@ export class Character {
         for (const s of [-1, 1]) {
           const ear = mesh(new THREE.SphereGeometry(0.25, 20, 14), black, s * 0.58, 0.78, -0.08);
           ear.scale.z = 0.7;
+          ear.userData.top = 'ear';
           shell.add(ear);
         }
         break;
@@ -493,6 +502,7 @@ export class Character {
           const inner = mesh(new THREE.CapsuleGeometry(0.08, 0.46, 6, 12), pinkSoft, 0, 0.4, 0.07);
           inner.scale.z = 0.35;
           ear.add(outer, inner);
+          ear.userData.top = 'ear';
           shell.add(ear);
         }
         shell.add(mesh(new THREE.SphereGeometry(0.24, 16, 12), vinyl('#ffffff', { vertexColors: false }), 0, -0.2, -0.98));
@@ -501,6 +511,23 @@ export class Character {
     }
     this.hat = makeHat(hat, accent);
     body.add(this.hat);
+    // 戴了盖住头顶的帽子：头顶的耳朵、天线、呆毛会穿过帽子，收起来
+    const covers = ['tophat', 'cowboy', 'propeller', 'party', 'crown'].includes(hat);
+    const bigBrim = ['tophat', 'cowboy', 'propeller', 'headphones'].includes(hat);
+    shell.traverse((o) => {
+      if (!o.userData.top) return;
+      if (o.userData.top === 'ear') o.visible = !bigBrim;
+      else o.visible = !covers;
+    });
+    if (covers && !bigBrim && char === 'bunny') {
+      // 小帽子（派对帽、皇冠）夹在两只兔耳朵中间：耳朵往外张开一点
+      shell.traverse((o) => {
+        if (o.userData.top === 'ear') {
+          o.position.x *= 1.55;
+          o.rotation.z *= 3;
+        }
+      });
+    }
 
     // 四肢：身体同色的小圆脚 + 小圆手（企鹅、小鸡用翅膀代替手）
     const birdy = char === 'penguin' || char === 'chick';
@@ -521,7 +548,7 @@ export class Character {
     if (!birdy) {
       const handMat = char === 'robot' ? std('#aab2cc', { metalness: 0.85, roughness: 0.28 }) : vinyl(new THREE.Color(accent).offsetHSL(0, 0, 0.04), { vertexColors: false });
       for (const s of [-1, 1]) {
-        const h = mesh(sphereGeo, handMat, s * 1.0, -0.22, 0.14);
+        const h = mesh(sphereGeo, handMat, s * 0.9, -0.22, 0.2);
         h.scale.set(0.15, 0.17, 0.15);
         body.add(h);
         this.hands.push({ obj: h, side: s, base: h.position.clone() });

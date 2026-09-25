@@ -25,6 +25,12 @@
         <span class="avatar" id="menuAvatar"></span>
         <span class="chip-text"><b id="menuName"></b><small>点我换装 / 改名</small></span>
       </button>
+      <div class="lan-pill hidden" id="lanPill">
+        <span class="lan-lbl">📶 同一 Wi-Fi 的朋友打开</span>
+        <b id="lanUrl" class="lan-url"></b>
+        <button class="lan-copy" id="lanCopy">📋 复制</button>
+        <button class="lan-qr" id="lanQR" title="显示二维码">▦</button>
+      </div>
       <div class="icon-row">
         <button class="update-pill hidden" id="btnUpdate" title="有新版本">🆕 <span id="updVer"></span></button>
         <button class="icon-btn lang-btn" id="btnLang">EN</button>
@@ -162,6 +168,7 @@
     <div id="effects"></div>
     <div id="spectate"></div>
     <div id="crosshair" class="hidden"></div>
+    <button id="itemSlot" class="hidden" title="使用道具（F）"><span class="ico"></span><b class="key">F</b></button>
     <div class="hud-buttons">
       <button class="icon-btn" id="btnView" title="切换第一人称 / 第三人称（V）">🎥</button>
       <button class="icon-btn" id="btnEmote" title="表情（数字键 1-8）">😀</button>

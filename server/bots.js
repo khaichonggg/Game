@@ -50,6 +50,39 @@ function danger(room, p) {
   return null;
 }
 
+// 机器人什么时候用手上的道具
+function maybeUseItem(room, p, ctx, lvl) {
+  if (!p.item) {
+    p.itemHold = 0;
+    return;
+  }
+  p.itemHold = (p.itemHold || 0) + lvl.think;
+  const d = ctx.enemyDist;
+  let use = false;
+  switch (p.item) {
+    case 'bomb':
+      use = d < 150;
+      break;
+    case 'freeze':
+      use = d < 170;
+      break;
+    case 'tornado':
+      use = d < 380;
+      break;
+    case 'banana':
+      use = d < 260 || p.itemHold > 4;
+      break;
+    case 'shield':
+    case 'big':
+      use = d < 200 || !room.safeAt(p.x, p.y);
+      break;
+    default: // speed / ghost
+      use = p.itemHold > 1.2 + Math.random() * 1.5;
+  }
+  // 拿太久了就随便用掉（别一直攥着）
+  if (use || p.itemHold > 8) room.useItem(p);
+}
+
 function think(room, p, dt) {
   p.botThink -= dt;
   if (p.botThink > 0) return;
@@ -57,6 +90,7 @@ function think(room, p, dt) {
   p.botThink = rand(lvl.think * 0.7, lvl.think * 1.3);
   p.input.dash = false;
   const ctx = analyze(room, p);
+  maybeUseItem(room, p, ctx, lvl);
   let goal = danger(room, p);
 
   if (!goal && room.mode.botGoal) goal = room.mode.botGoal(room, p, ctx);

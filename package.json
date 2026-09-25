@@ -1,6 +1,6 @@
 {
   "name": "bumper-balls",
-  "version": "2.4.0",
+  "version": "2.5.0",
   "description": "碰碰球大乱斗 - 轻量多人在线派对游戏",
   "main": "server.js",
   "scripts": {
@@ -26,5 +26,5 @@
     "branch": "",
     "fallbackBranch": "claude/loving-babbage-zumou8"
   },
-  "releaseNotes": "角色全面重做：大眼睛、腮红、会变的表情（眨眼、开心、害怕、晕眩…），身体更圆润可爱，机器人换成发光屏幕脸"
+  "releaseNotes": "道具栏（按 F 想什么时候用就什么时候用）、场景地图更可爱、第一人称拖动转向、主菜单一键复制局域网网址、「✔ 已准备」、修复穿模、设置里新增更新内容"
 }

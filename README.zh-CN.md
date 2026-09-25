@@ -160,8 +160,8 @@ npm start            # 或者：node launcher.js
 
 | | 移动 | 冲刺 | 其他 |
 | --- | --- | --- | --- |
-| 🖥️ 电脑 | <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> / 方向键 | <kbd>空格</kbd> / <kbd>Shift</kbd> / <kbd>J</kbd> | <kbd>V</kbd> 第一人称 · <kbd>1</kbd>~<kbd>8</kbd> 表情 · <kbd>T</kbd> 嘲讽贴图 · <kbd>Esc</kbd> 菜单 · <kbd>回车</kbd> 聊天 |
-| 📱 手机 | 左半屏拖动摇杆 | 右下角红色按钮 | 第一人称时右半屏左右拖动转向 |
+| 🖥️ 电脑 | <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> / 方向键 | <kbd>空格</kbd> / <kbd>Shift</kbd> / <kbd>J</kbd> | <kbd>F</kbd> 使用道具 · <kbd>V</kbd> 第一人称 · <kbd>1</kbd>~<kbd>8</kbd> 表情 · <kbd>T</kbd> 嘲讽贴图 · <kbd>Esc</kbd> 菜单 · <kbd>回车</kbd> 聊天 |
+| 📱 手机 | 左半屏拖动摇杆 | 右下角红色按钮（旁边是道具按钮） | 第一人称时右半屏左右拖动转向 |
 
 第一人称下，电脑用鼠标（点一下画面锁定鼠标）、←→ 或 Q / E 转向。
 

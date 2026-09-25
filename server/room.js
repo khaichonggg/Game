@@ -151,6 +151,7 @@ class Room {
       score: 0,
       kills: 0,
       fx: emptyFx(),
+      item: null,
       lastHitBy: null,
       lastHitTime: -99,
       botThink: 0,
@@ -274,6 +275,9 @@ class Room {
         }
         break;
       }
+      case 'use':
+        this.useItem(p);
+        break;
       case 'sticker':
         this.sticker(p, String(msg.s || ''));
         break;
@@ -397,6 +401,7 @@ class Room {
       p.exploded = false;
       p.out = false;
       p.fx = emptyFx();
+      p.item = null;
       p.massMul = 1;
       p.input = { x: 0, y: 0, dash: false };
     }
@@ -627,6 +632,7 @@ class Room {
     p.exploded = false;
     p.dashCd = 0;
     p.fx = emptyFx();
+    p.item = null;
     p.massMul = 1;
     p.hanging = false;
     p.hangT = 0;
@@ -789,11 +795,13 @@ class Room {
     if (playing) {
       for (const p of active) {
         if (p.kind !== 'player') continue;
+        if (p.item) continue; // 道具栏满了：先用掉手上的才能再捡
         const r = radiusOf(p) + K.ITEM_R;
         const idx = this.items.findIndex((it) => Math.hypot(it.x - p.x, it.y - p.y) < r);
         if (idx >= 0) {
           const [item] = this.items.splice(idx, 1);
-          this.applyItem(p, item);
+          p.item = item.type;
+          this.event({ type: 'grab', id: p.id, item: item.type, x: r1(item.x), y: r1(item.y) });
         }
       }
       if (mode.update) mode.update(this, dt);
@@ -997,6 +1005,15 @@ class Room {
     this.items.push({ id: this.nextObj++, type, x: t.cx, y: t.cy });
   }
 
+  // 玩家按下"使用道具"
+  useItem(p) {
+    if (!p.item || this.phase !== 'playing' || !p.alive || p.falling > 0 || p.hanging) return false;
+    const type = p.item;
+    p.item = null;
+    this.applyItem(p, { type, x: p.x, y: p.y });
+    return true;
+  }
+
   applyItem(p, item) {
     p.stats.items++;
     this.event({ type: 'pickup', id: p.id, item: item.type, x: r1(item.x), y: r1(item.y) });
@@ -1044,6 +1061,7 @@ class Room {
       b.falling = 0.6;
       b.hanging = false;
       if (b.kind === 'player') {
+        b.item = null;
         b.stats.falls++;
         this.event({ type: 'fall', id: b.id });
         const killer = b.lastHitBy && this.roundTime - b.lastHitTime < K.KO_WINDOW ? this.players.get(b.lastHitBy) : null;
@@ -1163,6 +1181,7 @@ class Room {
         score: r1(p.score),
         kills: p.kills,
         dashCd: Math.round(p.dashCd * 100) / 100,
+        item: p.item || '',
         fx: Object.fromEntries(Object.entries(p.fx).map(([k, v]) => [k, r1(v)])),
       })),
       results: this.phase === 'gameOver' ? this.results : null,
