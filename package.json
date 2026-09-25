@@ -1,6 +1,6 @@
 {
   "name": "bumper-balls",
-  "version": "2.5.1",
+  "version": "2.5.2",
   "description": "碰碰球大乱斗 - 轻量多人在线派对游戏",
   "main": "server.js",
   "scripts": {
@@ -26,5 +26,5 @@
     "branch": "",
     "fallbackBranch": "claude/loving-babbage-zumou8"
   },
-  "releaseNotes": "换了 Wi-Fi 以后，主菜单顶部的局域网网址会自动更新，不用重启"
+  "releaseNotes": "修复「连不上服务器」：点黑色窗口不再暂停游戏；出错时自动恢复 / 自动重启"
 }

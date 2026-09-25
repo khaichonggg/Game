@@ -32,6 +32,9 @@ function installDeps() {
   if (r.status !== 0) console.log('⚠️ npm install failed, please run it manually (npm install 没有成功，请手动运行)');
 }
 
+let crashes = [];
+let stopping = false; // 用户按 Ctrl+C / 关窗口时不要自动重启
+
 function start() {
   // 只有第一次启动时打开浏览器；更新后重启时，已打开的页面会自己刷新
   const env = { ...process.env, BB_LAUNCHER: '1' };
@@ -55,6 +58,18 @@ function start() {
       setTimeout(start, 300);
       return;
     }
+    // 服务器意外退出：自动重启，朋友们的页面会自己重新连上；1 分钟内连续崩 5 次就不再重启
+    if (!stopping && code !== 0) {
+      const now = Date.now();
+      crashes = crashes.filter((t) => now - t < 60000);
+      crashes.push(now);
+      if (crashes.length <= 5) {
+        console.log(`\n⚠️ The server stopped unexpectedly (code ${code ?? signal}), restarting… (服务器意外停止，正在自动重启…)\n`);
+        setTimeout(start, 1000);
+        return;
+      }
+      console.log('\n❌ The server keeps crashing. Please send data/crash.log to the developer. (服务器反复出错，请把 data/crash.log 发给开发者)\n');
+    }
     process.exit(signal ? 1 : code || 0);
   });
 }
@@ -62,6 +77,7 @@ function start() {
 // Ctrl+C / 关闭窗口时把服务器一起关掉
 for (const sig of ['SIGINT', 'SIGTERM', 'SIGHUP']) {
   process.on(sig, () => {
+    stopping = true;
     if (child) child.kill(sig);
     else process.exit(0);
   });

@@ -51,6 +51,7 @@ const EN = {
   表情: 'Emotes',
   '说点什么…（回车发送）': 'Say something… (Enter to send)',
   '说点什么…': 'Say something…',
+  '游戏出了点小问题，已经回到房间，可以重新开始': 'Something went wrong, so everyone is back in the room. You can start again',
   "📰 更新内容": "📰 What's New",
   "看看更新了什么": "See what changed",
   "最新": "Latest",

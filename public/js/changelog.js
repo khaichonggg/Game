@@ -1,6 +1,18 @@
 // 更新内容（What's New）：新版本写在最前面。设置里的「📰 更新内容」按钮会显示这里的内容
 export const CHANGELOG = [
   {
+    v: '2.5.2',
+    date: '2026-09-25',
+    zh: [
+      '🛠️ 修复「连不上服务器」：在 Windows 黑色窗口里点一下会让游戏暂停，现在启动时自动关掉这个设置',
+      '🛡️ 服务器更稳：某个房间出错只会让这个房间回到大厅，不会再把所有人踢下线；万一服务器停了会自动重启，出错信息记在 data/crash.log',
+    ],
+    en: [
+      '🛠️ Fixed "cannot reach server": clicking inside the black Windows console used to pause the game; that setting is now turned off at startup',
+      '🛡️ Sturdier server: an error in one room only sends that room back to the lobby instead of disconnecting everyone; if the server stops it restarts itself, and errors are written to data/crash.log',
+    ],
+  },
+  {
     v: '2.5.1',
     date: '2026-09-25',
     zh: ['📶 换了 Wi-Fi / 网络以后，主菜单顶部的局域网网址和邀请二维码会自动变成新地址，不用重启游戏'],

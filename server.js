@@ -214,7 +214,11 @@ wss.on('connection', (ws) => {
       send({ t: 'left' });
       return;
     }
-    room.handle(player, msg);
+    try {
+      room.handle(player, msg);
+    } catch (e) {
+      logCrash(`message ${String(msg.t).slice(0, 20)} in room ${room.code}`, e);
+    }
   });
 
   ws.on('close', () => {
@@ -225,6 +229,32 @@ wss.on('connection', (ws) => {
 
 // 主循环：60Hz 模拟，30Hz 广播
 let lastSend = 0;
+// 出错兜底：记到 data/crash.log，这个房间回到大厅，服务器继续运行（别让一个 bug 把所有人踢下线）
+const CRASH_LOG = path.join(__dirname, 'data', 'crash.log');
+function logCrash(where, e) {
+  const line = `[${new Date().toISOString()}] v${VERSION} ${where}: ${(e && e.stack) || e}\n`;
+  console.error('⚠️ ' + line.trim().split('\n')[0]);
+  try {
+    fs.mkdirSync(path.dirname(CRASH_LOG), { recursive: true });
+    fs.appendFileSync(CRASH_LOG, line);
+  } catch {
+    /* 写不了日志也没关系 */
+  }
+}
+function recoverRoom(room, e) {
+  logCrash(`room ${room.code} (${room.settings.mode}/${room.settings.map}, ${room.phase})`, e);
+  try {
+    room.events = [];
+    room.toLobby();
+    const key = '游戏出了点小问题，已经回到房间，可以重新开始';
+    room.chat(null, key, key);
+  } catch (e2) {
+    logCrash(`room ${room.code} recovery`, e2);
+  }
+}
+process.on('uncaughtException', (e) => logCrash('uncaught', e));
+process.on('unhandledRejection', (e) => logCrash('unhandledRejection', e));
+
 setInterval(() => {
   const dt = 1 / K.TICK_RATE;
   const now = Date.now();
@@ -234,10 +264,14 @@ setInterval(() => {
       rooms.delete(room.code);
       continue;
     }
-    room.tick(dt);
-    if (doSend) {
-      room.broadcast(room.snapshot());
-      room.events = [];
+    try {
+      room.tick(dt);
+      if (doSend) {
+        room.broadcast(room.snapshot());
+        room.events = [];
+      }
+    } catch (e) {
+      recoverRoom(room, e);
     }
   }
   if (doSend) lastSend = now;
@@ -276,7 +310,11 @@ server.on('listening', async () => {
   } else console.log('  (No LAN address found — is this computer on Wi-Fi? / 没找到局域网地址，电脑连网了吗？)');
   console.log('\n  Keep this window open while playing. Press Ctrl+C to stop.');
   console.log('  玩的时候不要关掉这个窗口，按 Ctrl+C 停止。');
-  if (process.platform === 'win32') console.log('  Windows: if a firewall prompt appears, allow "Private networks". / 弹出防火墙提示时请点「允许访问」。');
+  if (process.platform === 'win32') {
+    console.log('  Windows: if a firewall prompt appears, allow "Private networks". / 弹出防火墙提示时请点「允许访问」。');
+    console.log('  Don\'t click inside this window - it pauses the game. If the title says "Select", press Esc.');
+    console.log('  不要点这个黑色窗口里面，点了游戏会暂停；标题出现「选择」时按 Esc 恢复。');
+  }
   console.log(line + '\n');
   if (process.env.BB_OPEN === '1') openBrowser(`http://localhost:${PORT}`);
 });

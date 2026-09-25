@@ -16,6 +16,8 @@ if not exist "%~dp0runtime\node.exe" goto nonode
 :bundled
 set "PATH=%~dp0runtime;%PATH%"
 :run
+rem 关掉「快速编辑」：不然在黑色窗口里点一下，游戏服务器就会被暂停（朋友们会连不上）
+powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0tools\no-quickedit.ps1" >nul 2>nul
 set BB_OPEN=1
 node launcher.js
 echo.
