@@ -91,12 +91,13 @@ Step off an edge and a standing teammate catches you on the rope and reels you b
 
 ## 🚀 Quick start (2 minutes)
 
-1. Install **[Node.js](https://nodejs.org/)** (the LTS version) — one time only.
-2. Download this repo: **Code → Download ZIP** and unzip it (or `git clone https://github.com/khaichonggg/Game.git`).
-3. Start the game:
-   - **Windows:** double-click **`start.bat`**
+1. Download this repo: **Code → Download ZIP** and unzip it (or `git clone https://github.com/khaichonggg/Game.git`).
+2. Start the game:
+   - **Windows:** double-click **`start.bat`** — nothing to install: if Node.js isn't on your PC, it downloads a portable copy (~30 MB) into `runtime\` the first time
    - **macOS:** double-click **`start.command`** (first time: right-click → Open)
    - **Linux:** run **`./start.sh`**
+
+   (macOS / Linux need **[Node.js](https://nodejs.org/)** LTS installed once.)
 
 Your browser opens the game automatically. **No `npm install` needed** — everything is included.
 

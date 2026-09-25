@@ -68,12 +68,13 @@
 
 ## 🚀 快速开始（2 分钟）
 
-1. 安装 **[Node.js](https://nodejs.org/)**（选 LTS 版本），只需要装一次。
-2. 下载游戏：在 GitHub 页面点 **Code → Download ZIP** 并解压（或者 `git clone https://github.com/khaichonggg/Game.git`）。
-3. 启动：
-   - **Windows**：双击 **`start.bat`**
+1. 下载游戏：在 GitHub 页面点 **Code → Download ZIP** 并解压（或者 `git clone https://github.com/khaichonggg/Game.git`）。
+2. 启动：
+   - **Windows**：双击 **`start.bat`**，什么都不用装：电脑上没有 Node.js 的话，第一次运行会自动下载一个免安装版（约 30MB）放进 `runtime\` 文件夹
    - **macOS**：双击 **`start.command`**（第一次需要右键 → 打开）
    - **Linux**：运行 **`./start.sh`**
+
+   （macOS / Linux 需要先安装一次 **[Node.js](https://nodejs.org/)** LTS 版本。）
 
 浏览器会自动打开游戏。**不需要 `npm install`**，需要的东西都已经包含在里面了。
 
