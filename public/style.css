@@ -2870,3 +2870,27 @@ tr.win td {
   background: var(--red);
   border: 2px solid #fff;
 }
+
+/* 连不上服务器时的检查清单 */
+.conn-help {
+  text-align: left;
+  font-size: 14px;
+  line-height: 1.6;
+}
+.conn-help ol {
+  margin: 8px 0 0;
+  padding-left: 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.conn-help code {
+  background: rgba(255, 255, 255, 0.12);
+  border-radius: 6px;
+  padding: 0 5px;
+}
+
+.empty-sub {
+  text-align: center;
+  margin-top: 10px;
+}

@@ -78,13 +78,37 @@ function onDisconnect() {
     retry++;
     if (retry > 12) {
       exitRoom();
-      modal({ title: tr('连接中断'), body: tr('无法重新连接到房间，请确认开服的电脑还在运行。') });
+      connectionHelp();
       return;
     }
     retryTimer = setTimeout(() => connect({ room: roomCode }), Math.min(4000, 600 * retry));
   } else if (wasJoining) {
     menuError(tr('连接服务器失败，请确认服务器正在运行'));
+    connectionHelp();
   }
+}
+
+// 连不上的时候告诉玩家该检查什么（开服的电脑 / 朋友的设备看到的内容不一样）
+function connectionHelp() {
+  if (modalOpen()) return;
+  const host = isLocalHost(location.hostname);
+  const steps = host
+    ? [
+        tr('<b>黑色窗口还开着吗？</b>关掉了就再双击 <code>start.bat</code>'),
+        tr('<b>窗口标题前面有「选择」两个字？</b>在黑色窗口里按一下 <kbd>Esc</kbd>，游戏就会继续'),
+        tr('<b>窗口里有红字或报错？</b>截图发给开发者，或者双击游戏文件夹里的 <code>diagnose.bat</code> 生成诊断报告'),
+        tr('<b>端口变了？</b>窗口里写的是 3001 之类的其他端口，就打开窗口里显示的那个网址'),
+      ]
+    : [
+        tr('<b>开服的电脑还在运行吗？</b>黑色窗口不能关，电脑不能睡眠'),
+        tr('<b>在同一个 Wi-Fi 吗？</b>换过网络后网址会变，请房主在主菜单顶部重新复制网址'),
+        tr('<b>防火墙：</b>开服的电脑要把网络设成「专用网络」，或者在防火墙提示里点「允许访问」'),
+        tr('<b>公共 Wi-Fi 连不上？</b>学校 / 公司 / 咖啡店的 Wi-Fi 常常禁止设备互连，请房主用「邀请 → 外网链接」'),
+      ];
+  const box = document.createElement('div');
+  box.className = 'conn-help';
+  box.innerHTML = `<p>${host ? tr('这台电脑上的游戏服务器没有响应。') : tr('连不上开服的电脑。')}</p><ol>${steps.map((x) => `<li>${x}</li>`).join('')}</ol>`;
+  modal({ title: tr('📡 连不上服务器'), body: box, actions: [{ label: tr('🔄 重试'), cls: 'btn-yellow', onClick: () => location.reload() }, { label: tr('关闭') }] });
 }
 
 function onMessage(m) {
@@ -1329,7 +1353,7 @@ async function refreshRooms() {
   try {
     list = await fetch('/api/rooms').then((r) => r.json());
   } catch {
-    setHTML($('roomList'), tr('<div class="empty"><div class="big">📡</div>连接服务器失败</div>'));
+    setHTML($('roomList'), tr('<div class="empty"><div class="big">📡</div>连接服务器失败</div>') + `<div class="empty-sub"><button class="btn btn-blue" data-help="1">${tr('❓ 为什么连不上？')}</button><p class="hint">${tr('每 4 秒会自动重试')}</p></div>`);
     return;
   }
   if (current !== 'rooms') return;
@@ -1354,6 +1378,7 @@ async function refreshRooms() {
   setHTML($('roomsHint'), tr('只显示同一台服务器上的公开房间；私密房间需要房主给你房间码。'));
 }
 $('roomList').onclick = (e) => {
+  if (e.target.closest('[data-help]')) return connectionHelp();
   const b = e.target.closest('[data-code]');
   if (b) joinRoom({ room: b.dataset.code });
   if (e.target.closest('[data-create]')) joinRoom({ room: '', public: true });

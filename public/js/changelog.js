@@ -1,6 +1,20 @@
 // 更新内容（What's New）：新版本写在最前面。设置里的「📰 更新内容」按钮会显示这里的内容
 export const CHANGELOG = [
   {
+    v: '2.5.3',
+    date: '2026-09-25',
+    zh: [
+      '🛠️ 修复换网络后「连不上服务器」：Windows 在切换 Wi-Fi 时读取网卡地址会出错，以前会让服务器直接崩掉，现在会沿用上一次的地址继续运行',
+      '📡 连不上的时候会弹出检查清单（开服电脑和朋友的设备看到的内容不同），局域网房间列表里也有「为什么连不上？」按钮',
+      '🩺 新增 diagnose.bat：双击就能生成诊断报告（服务器、端口、网络、防火墙、出错记录），直接粘贴发给开发者',
+    ],
+    en: [
+      '🛠️ Fixed "cannot reach server" after switching networks: reading network addresses can fail on Windows while the Wi-Fi changes, which used to crash the server; it now keeps the last known address',
+      '📡 When you cannot connect, a checklist explains what to check (different for the host PC and for friends); the LAN room list has a "Why can\'t I connect?" button',
+      '🩺 New diagnose.bat: double-click to create a report (server, ports, network, firewall, recent errors) you can paste to the developer',
+    ],
+  },
+  {
     v: '2.5.2',
     date: '2026-09-25',
     zh: [

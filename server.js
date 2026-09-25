@@ -48,6 +48,19 @@ function publicRooms() {
 }
 
 const server = http.createServer((req, res) => {
+  try {
+    serve(req, res);
+  } catch (e) {
+    logCrash(`http ${String(req.url).slice(0, 60)}`, e);
+    try {
+      if (!res.headersSent) res.writeHead(500, { 'Content-Type': 'application/json' });
+      res.end('{"error":"server error"}');
+    } catch {
+      /* 连接已经断了 */
+    }
+  }
+});
+function serve(req, res) {
   let urlPath;
   try {
     urlPath = decodeURIComponent(req.url.split('?')[0]);
@@ -80,7 +93,7 @@ const server = http.createServer((req, res) => {
     res.writeHead(200, { 'Content-Type': MIME[path.extname(file)] || 'application/octet-stream', 'Cache-Control': 'no-cache' });
     res.end(data);
   });
-});
+}
 
 // 只有开服的这台电脑自己才能点更新（局域网里的朋友不能远程重启你的服务器）
 function isLocal(req) {

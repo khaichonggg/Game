@@ -16,9 +16,21 @@ function privateScore(ip) {
 }
 
 // 返回按"最可能是 Wi-Fi / 网线地址"排序的 IPv4 列表
+// Windows 上刚换网络 / 开着 VPN 时，os.networkInterfaces() 偶尔会直接抛错
+// （uv_interface_addresses returned Unknown system error），这时用上一次的结果，绝不能让服务器崩掉
+let lastLan = [];
+function interfaces() {
+  try {
+    return os.networkInterfaces();
+  } catch {
+    return null;
+  }
+}
 function lanAddresses() {
+  const ifs = interfaces();
+  if (!ifs) return lastLan;
   const out = [];
-  for (const [name, list] of Object.entries(os.networkInterfaces())) {
+  for (const [name, list] of Object.entries(ifs)) {
     for (const a of list || []) {
       // Node 18.0~18.3 里 family 是数字 4
       if ((a.family === 'IPv4' || a.family === 4) && !a.internal && !a.address.startsWith('169.254.')) {
@@ -30,7 +42,8 @@ function lanAddresses() {
   const list = out.sort((a, b) => b.score - a.score).map((x) => x.ip);
   // 电脑有很多网卡、显示的地址不对时，可以用 LAN_IP=192.168.1.5 手动指定
   const forced = (process.env.LAN_IP || '').trim();
-  return forced ? [forced, ...list.filter((ip) => ip !== forced)] : list;
+  lastLan = forced ? [forced, ...list.filter((ip) => ip !== forced)] : list;
+  return lastLan;
 }
 
 // 在控制台用方块字符画二维码（黑白用 ANSI 颜色，手机扫得出来）

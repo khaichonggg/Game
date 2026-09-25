@@ -194,4 +194,24 @@ console.log('道具栏');
   check(snap.players.find((q) => q.id === host.id).item === 'bomb', '快照里带着每个人道具栏里的东西');
 }
 
+console.log('局域网地址（Windows 换网络时系统调用会抛错）');
+{
+  const os = require('os');
+  const { lanAddresses } = require('../server/lan');
+  const first = lanAddresses();
+  const orig = os.networkInterfaces;
+  os.networkInterfaces = () => {
+    throw new Error('uv_interface_addresses returned Unknown system error 1');
+  };
+  let res;
+  let threw = false;
+  try {
+    res = lanAddresses();
+  } catch {
+    threw = true;
+  }
+  os.networkInterfaces = orig;
+  check(!threw && Array.isArray(res) && res.join() === first.join(), '取网卡地址出错时不会抛异常，沿用上一次的地址');
+}
+
 done();
