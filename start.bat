@@ -3,8 +3,14 @@ rem Bumper Brawl / 碰碰球大乱斗 - double-click to start (双击启动)
 chcp 65001 >nul
 cd /d "%~dp0"
 title Bumper Brawl
+rem 自带的 Node.js（免安装版压缩包里有 runtime\node.exe）优先使用
+if exist "%~dp0runtime\node.exe" (
+  set "PATH=%~dp0runtime;%PATH%"
+  goto run
+)
 where node >nul 2>nul
 if errorlevel 1 goto nonode
+:run
 set BB_OPEN=1
 node launcher.js
 echo.
