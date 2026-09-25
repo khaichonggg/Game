@@ -4,6 +4,25 @@ import * as THREE from 'three';
 import { std, mesh, markShared, disposeGroup } from './core.js';
 
 const sphereGeo = markShared(new THREE.SphereGeometry(1, 40, 28));
+// 身体用的球：顶点色做一点"下面暗、上面亮"的柔和阴影，看起来更有体积感
+const bodyGeo = markShared(
+  (() => {
+    const g = new THREE.SphereGeometry(1, 48, 32);
+    const pos = g.attributes.position;
+    const col = new Float32Array(pos.count * 3);
+    for (let i = 0; i < pos.count; i++) {
+      const y = pos.getY(i);
+      const k = 0.62 + 0.38 * THREE.MathUtils.smoothstep(y, -1, 0.35);
+      col[i * 3] = col[i * 3 + 1] = col[i * 3 + 2] = k;
+    }
+    g.setAttribute('color', new THREE.BufferAttribute(col, 3));
+    return g;
+  })()
+);
+// 塑胶玩具质感：清漆高光 + 边缘柔光
+const vinyl = (color, o = {}) =>
+  new THREE.MeshPhysicalMaterial({ color, roughness: 0.42, metalness: 0, clearcoat: 0.8, clearcoatRoughness: 0.22, sheen: 0.6, sheenRoughness: 0.45, sheenColor: new THREE.Color('#ffffff'), vertexColors: true, ...o });
+const IRIS = { bean: '#5a3a22', cat: '#3fae4a', dino: '#c07a18', penguin: '#2a3a6a', chick: '#3a2a1a', panda: '#2a1a12', bunny: '#b0305a' };
 
 // ---------------------------------------------------------------------
 // 皮肤贴图（canvas 生成，按 皮肤+颜色 缓存）
@@ -30,7 +49,7 @@ const shade = (hex, l) => '#' + new THREE.Color(hex).offsetHSL(0, 0, l).getHexSt
 function skinMaterial(skin, color) {
   switch (skin) {
     case 'stripes':
-      return std('#ffffff', {
+      return vinyl('#ffffff', {
         roughness: 0.35,
         map: canvasTex(`stripes${color}`, (g, w, h) => {
           g.fillStyle = color;
@@ -40,7 +59,7 @@ function skinMaterial(skin, color) {
         }),
       });
     case 'dots':
-      return std('#ffffff', {
+      return vinyl('#ffffff', {
         roughness: 0.35,
         map: canvasTex(`dots${color}`, (g, w, h) => {
           g.fillStyle = color;
@@ -56,7 +75,7 @@ function skinMaterial(skin, color) {
         }),
       });
     case 'camo':
-      return std('#ffffff', {
+      return vinyl('#ffffff', {
         roughness: 0.6,
         map: canvasTex(`camo${color}`, (g, w, h) => {
           const rnd = seeded(7);
@@ -72,7 +91,7 @@ function skinMaterial(skin, color) {
         }),
       });
     case 'rainbow':
-      return std('#ffffff', {
+      return vinyl('#ffffff', {
         roughness: 0.3,
         map: canvasTex('rainbow', (g, w, h) => {
           for (let y = 0; y < h; y++) {
@@ -82,7 +101,7 @@ function skinMaterial(skin, color) {
         }),
       });
     case 'candy':
-      return std('#ffffff', {
+      return vinyl('#ffffff', {
         roughness: 0.25,
         map: canvasTex(`candy${color}`, (g, w, h) => {
           g.fillStyle = '#ffffff';
@@ -99,7 +118,7 @@ function skinMaterial(skin, color) {
         }),
       });
     case 'gold':
-      return std('#ffcf4a', { metalness: 1, roughness: 0.22, emissive: '#5a3a00', emissiveIntensity: 0.25 });
+      return vinyl('#ffcf4a', { metalness: 1, roughness: 0.2, clearcoat: 1, sheen: 0, emissive: '#5a3a00', emissiveIntensity: 0.25 });
     case 'galaxy': {
       const tex = canvasTex('galaxy', (g, w, h) => {
         const rnd = seeded(3);
@@ -120,7 +139,7 @@ function skinMaterial(skin, color) {
         g.fillStyle = '#ffffff';
         for (let i = 0; i < 160; i++) g.fillRect(rnd() * w, rnd() * h, rnd() < 0.1 ? 2 : 1, rnd() < 0.1 ? 2 : 1);
       });
-      return std('#ffffff', { roughness: 0.4, map: tex, emissiveMap: tex, emissive: '#ffffff', emissiveIntensity: 0.55 });
+      return vinyl('#ffffff', { roughness: 0.4, map: tex, emissiveMap: tex, emissive: '#ffffff', emissiveIntensity: 0.55 });
     }
     case 'lava': {
       const tex = canvasTex('lavaskin', (g, w, h) => {
@@ -144,12 +163,12 @@ function skinMaterial(skin, color) {
           g.stroke();
         }
       });
-      return std('#ffffff', { roughness: 0.9, map: tex, emissiveMap: tex, emissive: '#ffffff', emissiveIntensity: 0.9, flatShading: false });
+      return vinyl('#ffffff', { roughness: 0.9, map: tex, emissiveMap: tex, emissive: '#ffffff', emissiveIntensity: 0.9, flatShading: false });
     }
     case 'ice':
-      return std('#cdf3ff', { roughness: 0.05, metalness: 0.1, transparent: true, opacity: 0.82, emissive: '#6fd6ff', emissiveIntensity: 0.2 });
+      return vinyl('#cdf3ff', { roughness: 0.05, metalness: 0.1, transmission: 0, transparent: true, opacity: 0.84, emissive: '#6fd6ff', emissiveIntensity: 0.2, clearcoat: 1 });
     default:
-      return std(color, { roughness: 0.32, metalness: 0.05 });
+      return vinyl(color);
   }
 }
 
@@ -282,6 +301,8 @@ export class Character {
       disposeGroup(this.fxGroup);
     }
     this.key = `${profile.char}|${profile.skin}|${profile.color}|${profile.hat}|${opts.team ?? -1}`;
+    this.brows = [];
+    this.mouths = null;
     const { char, skin, color, hat } = profile;
     const accent = accentColor(skin, color);
     const body = new THREE.Group();
@@ -291,7 +312,14 @@ export class Character {
       this.bodyMat.metalness = Math.max(this.bodyMat.metalness, 0.55);
       this.bodyMat.roughness = Math.min(this.bodyMat.roughness, 0.3);
     }
-    body.add(mesh(sphereGeo, this.bodyMat));
+    body.add(mesh(bodyGeo, this.bodyMat));
+    // 浅色肚皮（纯色类皮肤才有，特殊皮肤保持原样）
+    if (['solid', 'stripes', 'dots', 'camo', 'candy'].includes(skin) && char !== 'penguin' && char !== 'robot') {
+      const bellyMat = vinyl(new THREE.Color(color).lerp(new THREE.Color('#ffffff'), 0.62), { vertexColors: false, clearcoat: 0.4 });
+      const belly = mesh(sphereGeo, bellyMat, 0, -0.26, 0.5);
+      belly.scale.set(0.66, 0.6, 0.52);
+      body.add(belly);
+    }
 
     // 碰碰车保险杠：团队模式换成发光的队伍颜色
     const teamCol = opts.teamColor;
@@ -344,22 +372,64 @@ export class Character {
         bolt.rotation.z = Math.PI / 2;
         face.add(bolt);
       }
+      // 胸口指示灯 + 腰部分割线
+      const chest = onSurface(new THREE.Group(), 0, -0.25, 1, 1.0);
+      chest.add(mesh(new THREE.CircleGeometry(0.13, 20), new THREE.MeshBasicMaterial({ color: '#4ff0ff' })));
+      chest.add(mesh(new THREE.RingGeometry(0.13, 0.17, 20), std('#8a90a8', { metalness: 0.8, roughness: 0.3 })));
+      face.add(chest);
+      const band = mesh(new THREE.TorusGeometry(1.0, 0.025, 6, 48), std('#2a2e44', { metalness: 0.7 }), 0, 0.12, 0);
+      band.rotation.x = Math.PI / 2;
+      face.add(band);
     } else {
+      // 眼睛：眼白 + 彩色虹膜 + 瞳孔 + 一大一小两个高光
+      const irisMat = std(IRIS[char] || '#3a2a1a', { roughness: 0.2 });
+      const glint = new THREE.MeshBasicMaterial({ color: '#ffffff' });
       for (const [x, y, z] of eyePos) {
         const e = new THREE.Group();
-        onSurface(e, x, y, z, 0.84);
-        e.add(mesh(new THREE.SphereGeometry(0.26, 16, 12), white));
-        e.add(mesh(new THREE.SphereGeometry(0.14, 12, 10), dark, 0, 0, 0.17));
-        e.add(mesh(new THREE.SphereGeometry(0.05, 8, 6), white, 0.05, 0.06, 0.29));
+        onSurface(e, x, y, z, 0.83);
+        const sclera = mesh(new THREE.SphereGeometry(0.28, 20, 14), white);
+        sclera.scale.set(1, 1.12, 0.9);
+        e.add(sclera);
+        const iris = mesh(new THREE.SphereGeometry(0.17, 16, 12), irisMat, 0, -0.01, 0.15);
+        iris.scale.set(1, 1.1, 0.7);
+        e.add(iris);
+        const pupil = mesh(new THREE.SphereGeometry(0.1, 12, 10), dark, 0, -0.01, 0.23);
+        pupil.scale.set(1, 1.1, 0.6);
+        e.add(pupil);
+        e.add(mesh(new THREE.SphereGeometry(0.055, 8, 6), glint, 0.06, 0.08, 0.3));
+        e.add(mesh(new THREE.SphereGeometry(0.025, 6, 4), glint, -0.06, -0.07, 0.3));
         face.add(e);
         this.eyes.push(e);
       }
+      // 眉毛：冲刺时皱眉，被吊住时八字眉
+      this.brows = [];
+      for (const sx of [-1, 1]) {
+        const b = new THREE.Group();
+        onSurface(b, sx * 0.36, 0.84, 0.62, 1.0);
+        const bar = mesh(new THREE.CapsuleGeometry(0.035, 0.18, 4, 8), dark);
+        bar.rotation.z = Math.PI / 2;
+        const tilt = new THREE.Group();
+        tilt.add(bar);
+        b.add(tilt);
+        face.add(b);
+        this.brows.push({ g: tilt, side: sx });
+      }
+      // 嘴巴三种表情：微笑 / 张嘴大笑（跑起来、欢呼）/ O 形（被撞、掉下去）
+      this.mouths = null;
       if (char !== 'penguin' && char !== 'chick') {
         const mouthG = onSurface(new THREE.Group(), 0, 0.2, 1, 1.0);
-        const m = mesh(new THREE.TorusGeometry(0.16, 0.035, 6, 14, Math.PI), dark);
-        m.rotation.z = Math.PI;
-        mouthG.add(m);
+        const smile = mesh(new THREE.TorusGeometry(0.16, 0.035, 6, 14, Math.PI), dark);
+        smile.rotation.z = Math.PI;
+        const open = new THREE.Group();
+        const cavity = mesh(new THREE.CircleGeometry(0.17, 20, Math.PI, Math.PI), std('#3a1020', { roughness: 0.6, side: THREE.DoubleSide }), 0, 0.03, 0.01);
+        const tongue = mesh(new THREE.CircleGeometry(0.08, 12, Math.PI, Math.PI), std('#ff6f8a', { side: THREE.DoubleSide }), 0, -0.07, 0.02);
+        open.add(cavity, tongue);
+        const oh = mesh(new THREE.TorusGeometry(0.07, 0.03, 6, 16), dark);
+        oh.scale.y = 1.3;
+        open.visible = oh.visible = false;
+        mouthG.add(smile, open, oh);
         face.add(mouthG);
+        this.mouths = { smile, open, oh };
       }
       for (const s of [-1, 1]) {
         const cheek = new THREE.Mesh(new THREE.CircleGeometry(0.1, 12), new THREE.MeshBasicMaterial({ color: '#ff9fb3', transparent: true, opacity: 0.7 }));
@@ -404,7 +474,21 @@ export class Character {
         body.add(mesh(new THREE.TubeGeometry(curve, 20, 0.09, 8), accentMat));
         break;
       }
+      case 'bean': {
+        // 头顶一撮呆毛
+        const tuft = std(new THREE.Color(accent).offsetHSL(0, 0, -0.12), { roughness: 0.45 });
+        for (const [x, r, rz] of [
+          [-0.08, 0.1, 0.5],
+          [0.06, 0.12, -0.2],
+        ]) {
+          const h = mesh(new THREE.CapsuleGeometry(r * 0.5, r * 2.2, 4, 8), tuft, x, 1.02, 0.05);
+          h.rotation.z = rz;
+          body.add(h);
+        }
+        break;
+      }
       case 'dino': {
+        for (const sx of [-1, 1]) body.add(onSurface(mesh(new THREE.SphereGeometry(0.035, 6, 4), dark), sx * 0.1, 0.32, 1, 1.0));
         const spikeMat = std(new THREE.Color(accent).offsetHSL(0.12, 0.1, -0.1), { roughness: 0.4 });
         for (let k = 0; k < 5; k++) {
           const th = 0.25 + k * 0.33;
@@ -632,6 +716,19 @@ export class Character {
     for (const e of this.xEyes) {
       e.visible = xEyes;
       e.rotation.z = xEyes ? Math.sin(t * 12) * 0.3 : 0;
+    }
+    // 表情：嘴型和眉毛跟着状态变
+    const scared = xEyes || this.flail > 0.45;
+    const happy = !scared && (s.cheer || (s.speed || 0) > 0.75);
+    if (this.mouths) {
+      this.mouths.oh.visible = scared;
+      this.mouths.open.visible = happy;
+      this.mouths.smile.visible = !scared && !happy;
+    }
+    for (const b of this.brows) {
+      const target = scared ? b.side * 0.4 : (s.speed || 0) > 0.75 && !s.cheer ? -b.side * 0.35 : b.side * 0.08;
+      b.g.rotation.z += (target - b.g.rotation.z) * Math.min(1, dt * 12);
+      b.g.visible = !xEyes;
     }
     this.stars.visible = s.slip || this.dizzy > 0;
     this.stars.rotation.y += dt * 6;

@@ -632,7 +632,7 @@ function renderHUD() {
   let spec = '';
   if (m && !m.alive && !m.falling && s.phase !== 'countdown') {
     if (m.out) spec = '😵 复活次数用完了，观战中…';
-    else if (['crown', 'paint', 'football', 'boss', 'rope'].includes(mode)) spec = m.respawn > 0 ? `⏳ ${Math.ceil(m.respawn)} 秒后在队友身边复活` : '';
+    else if (['crown', 'paint', 'football', 'boss', 'rope'].includes(mode)) spec = m.respawn > 0 ? `⏳ ${Math.ceil(m.respawn)} 秒后${mode === 'rope' ? '在队友身边' : ''}复活` : '';
     else spec = aliveThisRound ? '👀 你出局了，观战中…' : '⌛ 比赛进行中，下一局上场';
   }
   setHTML($('spectate'), spec);

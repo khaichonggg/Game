@@ -157,8 +157,112 @@ function tileShape(t, inset) {
 }
 
 let exitZone = new Set();
+// 地砖顶面的细节贴图（灰度，和地砖颜色相乘）：石纹 / 冰裂 / 金属面板 / 糖粒
+const detailCache = new Map();
+function detailTexture(kind) {
+  if (detailCache.has(kind)) return detailCache.get(kind);
+  const c = document.createElement('canvas');
+  c.width = c.height = 256;
+  const g = c.getContext('2d');
+  let seed = 7;
+  const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
+  g.fillStyle = '#ffffff';
+  g.fillRect(0, 0, 256, 256);
+  if (kind === 'lava') {
+    for (let i = 0; i < 900; i++) {
+      const v = 200 + Math.floor(rnd() * 55);
+      g.fillStyle = `rgb(${v},${v},${v})`;
+      g.fillRect(rnd() * 256, rnd() * 256, 1 + rnd() * 3, 1 + rnd() * 3);
+    }
+    g.strokeStyle = 'rgba(90,70,60,0.35)';
+    g.lineWidth = 1.5;
+    for (let i = 0; i < 6; i++) {
+      g.beginPath();
+      let x = rnd() * 256;
+      let y = rnd() * 256;
+      g.moveTo(x, y);
+      for (let k = 0; k < 5; k++) g.lineTo((x += (rnd() - 0.5) * 50), (y += (rnd() - 0.5) * 50));
+      g.stroke();
+    }
+  } else if (kind === 'ice') {
+    const gr = g.createLinearGradient(0, 0, 256, 256);
+    gr.addColorStop(0, '#ffffff');
+    gr.addColorStop(0.5, '#e4f1f7');
+    gr.addColorStop(1, '#ffffff');
+    g.fillStyle = gr;
+    g.fillRect(0, 0, 256, 256);
+    g.strokeStyle = 'rgba(255,255,255,0.9)';
+    for (let i = 0; i < 10; i++) {
+      g.lineWidth = 0.5 + rnd() * 1.5;
+      g.beginPath();
+      let x = rnd() * 256;
+      let y = rnd() * 256;
+      g.moveTo(x, y);
+      for (let k = 0; k < 4; k++) g.lineTo((x += (rnd() - 0.5) * 70), (y += (rnd() - 0.5) * 70));
+      g.stroke();
+    }
+    g.strokeStyle = 'rgba(120,170,200,0.35)';
+    for (let i = 0; i < 8; i++) {
+      g.beginPath();
+      const x = rnd() * 256;
+      const y = rnd() * 256;
+      g.moveTo(x, y);
+      g.lineTo(x + (rnd() - 0.5) * 60, y + (rnd() - 0.5) * 60);
+      g.stroke();
+    }
+  } else if (kind === 'space') {
+    g.fillStyle = '#e8ebf2';
+    g.fillRect(0, 0, 256, 256);
+    g.strokeStyle = 'rgba(40,50,80,0.35)';
+    g.lineWidth = 2;
+    g.strokeRect(10, 10, 236, 236);
+    g.strokeStyle = 'rgba(40,50,80,0.18)';
+    for (let i = -256; i < 256; i += 22) {
+      g.beginPath();
+      g.moveTo(i + 40, 60);
+      g.lineTo(i + 140, 196);
+      g.stroke();
+    }
+    g.fillStyle = 'rgba(60,70,100,0.55)';
+    for (const [x, y] of [
+      [24, 24],
+      [232, 24],
+      [24, 232],
+      [232, 232],
+    ]) {
+      g.beginPath();
+      g.arc(x, y, 5, 0, Math.PI * 2);
+      g.fill();
+    }
+  } else {
+    // 糖果：表面一层糖粒
+    const cols = ['#ffd6e8', '#fff3b0', '#d4f5ff', '#e6d8ff'];
+    for (let i = 0; i < 140; i++) {
+      g.save();
+      g.translate(rnd() * 256, rnd() * 256);
+      g.rotate(rnd() * Math.PI);
+      g.fillStyle = cols[i % cols.length];
+      g.fillRect(-4, -1.2, 8, 2.4);
+      g.restore();
+    }
+    const gr = g.createRadialGradient(80, 70, 0, 80, 70, 160);
+    gr.addColorStop(0, 'rgba(255,255,255,0.5)');
+    gr.addColorStop(1, 'rgba(255,255,255,0)');
+    g.fillStyle = gr;
+    g.fillRect(0, 0, 256, 256);
+  }
+  const t = markShared(new THREE.CanvasTexture(c));
+  t.colorSpace = THREE.SRGBColorSpace;
+  t.wrapS = t.wrapT = THREE.RepeatWrapping;
+  t.repeat.set(1 / 96, 1 / 96);
+  t.anisotropy = 4;
+  detailCache.set(kind, t);
+  return t;
+}
+
 function buildArena(def) {
   disposeGroup(arena);
+  rimFx.length = 0;
   tiles = [];
   bumpers = [];
   exitZone = new Set(def.level ? def.feat.exit : []);
@@ -183,7 +287,7 @@ function buildArena(def) {
       else if (exitZone.has(i)) col.lerp(new THREE.Color('#7be38b'), 0.28);
     }
     if (isIce) col.offsetHSL(0, 0, Math.sin(i * 12.9898) * 0.02);
-    const top = std(col, { roughness: f.rough, metalness: f.metal, emissive: '#ff2a00', emissiveIntensity: 0 });
+    const top = std(col, { roughness: f.rough, metalness: f.metal, emissive: '#ff2a00', emissiveIntensity: 0, map: detailTexture(def.theme || def.id) });
     const geo = new THREE.ExtrudeGeometry(tileShape(t, 3), {
       depth: TILE_H,
       bevelEnabled: true,
@@ -273,6 +377,70 @@ function buildArena(def) {
     bumpers.push({ jelly, squash: 0, squashV: 0 });
   });
   arenaR = def.radius;
+  if (!def.level) addRimOrnaments(def);
+}
+
+// 场地边缘的装饰：熔岩火盆 / 冰晶 / 信号灯 / 拐杖糖（不参与碰撞）
+const rimFx = [];
+function addRimOrnaments(def) {
+  const id = def.theme || def.id;
+  const R = def.radius + 34;
+  const n = 8;
+  for (let i = 0; i < n; i++) {
+    const a = (i / n) * Math.PI * 2 + Math.PI / n;
+    const g = new THREE.Group();
+    g.position.set(Math.cos(a) * R, 0, Math.sin(a) * R);
+    g.rotation.y = -a;
+    if (id === 'lava') {
+      const rock = new THREE.Mesh(rockify(new THREE.DodecahedronGeometry(26, 0), 0.2, i + 70), rockMat);
+      rock.scale.set(1, 0.7, 1);
+      rock.position.y = -26;
+      g.add(rock);
+      const bowl = new THREE.Mesh(new THREE.CylinderGeometry(18, 11, 14, 10), std('#3a2a2a', { roughness: 0.6, metalness: 0.4 }));
+      bowl.position.y = 2;
+      g.add(bowl);
+      const flameMat = new THREE.MeshBasicMaterial({ color: '#ffb347', transparent: true, opacity: 0.9, blending: THREE.AdditiveBlending, depthWrite: false });
+      const flame = new THREE.Mesh(new THREE.ConeGeometry(11, 34, 10), flameMat);
+      flame.position.y = 24;
+      const core = new THREE.Mesh(new THREE.ConeGeometry(6, 20, 8), new THREE.MeshBasicMaterial({ color: '#fff3a0', transparent: true, opacity: 0.95, blending: THREE.AdditiveBlending, depthWrite: false }));
+      core.position.y = 18;
+      g.add(flame, core);
+      rimFx.push({ kind: 'flame', flame, core, x: g.position.x, z: g.position.z, ph: i * 1.7 });
+    } else if (id === 'ice') {
+      const mat = new THREE.MeshStandardMaterial({ color: '#d8f6ff', roughness: 0.05, metalness: 0.1, transparent: true, opacity: 0.85, emissive: '#6fd6ff', emissiveIntensity: 0.35 });
+      for (let k = 0; k < 3; k++) {
+        const c = new THREE.Mesh(new THREE.OctahedronGeometry(10 + k * 4, 0), mat);
+        c.scale.set(0.6, 2.2, 0.6);
+        c.position.set((k - 1) * 12, 16 + k * 6, (k % 2) * 8);
+        c.rotation.z = (k - 1) * 0.3;
+        g.add(c);
+      }
+      rimFx.push({ kind: 'bob', obj: g, ph: i });
+    } else if (id === 'space') {
+      const post = new THREE.Mesh(new THREE.CylinderGeometry(3, 5, 46, 8), std('#9aa3c0', { metalness: 0.8, roughness: 0.3 }));
+      post.position.y = 10;
+      g.add(post);
+      const lamp = new THREE.Mesh(new THREE.SphereGeometry(7, 12, 10), new THREE.MeshBasicMaterial({ color: i % 2 ? '#ff4d6d' : '#19d3ff' }));
+      lamp.position.y = 36;
+      g.add(lamp);
+      const dish = new THREE.Mesh(new THREE.SphereGeometry(14, 16, 8, 0, Math.PI * 2, 0, Math.PI / 3), std('#c8cfe0', { metalness: 0.6, roughness: 0.3, side: THREE.DoubleSide }));
+      dish.position.set(0, 26, 6);
+      dish.rotation.x = -1;
+      g.add(dish);
+      rimFx.push({ kind: 'blink', lamp, ph: i * 0.8 });
+    } else {
+      // 糖果：红白拐杖糖
+      const tex = stripeTexture(['#ff4d6d', '#ffffff'], 8);
+      const mat = std('#ffffff', { map: tex, roughness: 0.3 });
+      const stick = new THREE.Mesh(new THREE.CylinderGeometry(4, 4, 60, 12), mat);
+      stick.position.y = 10;
+      g.add(stick);
+      const hook = new THREE.Mesh(new THREE.TorusGeometry(10, 4, 10, 20, Math.PI), mat);
+      hook.position.set(10, 40, 0);
+      g.add(hook);
+    }
+    arena.add(g);
+  }
 }
 
 // ---------------------------------------------------------------------
@@ -751,6 +919,15 @@ export function updateArena(dt, t) {
     b.jelly.scale.set(1 + b.squash * 0.4, 1.3 * (1 - b.squash), 1 + b.squash * 0.4);
   }
   underLight.intensity = theme.under[1] * (1 + Math.sin(t * 2.1) * 0.1 + Math.sin(t * 5.3) * 0.05);
+  for (const r of rimFx) {
+    if (r.kind === 'flame') {
+      const k = 1 + Math.sin(t * 13 + r.ph) * 0.12 + Math.sin(t * 29 + r.ph * 2) * 0.08;
+      r.flame.scale.set(1 / k, k, 1 / k);
+      r.core.scale.set(1, k * 0.9, 1);
+      if (Math.random() < dt * 4) sparks.add({ x: r.x + (Math.random() - 0.5) * 10, y: 40, z: r.z + (Math.random() - 0.5) * 10, vx: (Math.random() - 0.5) * 20, vy: 60 + Math.random() * 40, vz: (Math.random() - 0.5) * 20, life: 0.9, color: '#ffb347', size: 5, g: -10 });
+    } else if (r.kind === 'bob') r.obj.position.y = Math.sin(t * 1.4 + r.ph) * 4;
+    else if (r.kind === 'blink') r.lamp.visible = Math.sin(t * 3 + r.ph) > -0.3;
+  }
   for (const f of floaters) {
     f.a += f.sp * dt;
     f.m.position.set(Math.cos(f.a) * f.r, f.y + (f.bob ? Math.sin(t * 1.5 + f.r) * 3 : Math.sin(t + f.r) * 8), Math.sin(f.a) * f.r);
