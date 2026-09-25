@@ -750,8 +750,9 @@ class Room {
 
   movePlayer(p, dt, playing) {
     const ctrl = controllable(p);
-    let ix = ctrl ? p.input.x : 0;
-    let iy = ctrl ? p.input.y : 0;
+    // 一局结束后的停顿里不再接受操作，大家滑行停下（否则机器人会沿着最后的方向一直走）
+    let ix = ctrl && playing ? p.input.x : 0;
+    let iy = ctrl && playing ? p.input.y : 0;
     const il = Math.hypot(ix, iy);
     if (il > 1) {
       ix /= il;

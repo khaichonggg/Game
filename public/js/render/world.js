@@ -16,6 +16,7 @@ let myId = null;
 let shake = 0;
 let hitStop = 0;
 let lastPop = 0;
+let lastBossPop = 0;
 let arenaRadius = 460;
 let camR = 460;
 let wardrobeYaw = 0;
@@ -876,7 +877,10 @@ export function playEvents(events) {
             v.squashV += 4;
           }
         }
-        popText(ev.x, 150, ev.y, null, '#ffd23f', 30);
+        if (performance.now() - lastBossPop > 400) {
+          lastBossPop = performance.now();
+          popText(ev.x, 150, ev.y, null, '#ffd23f', 30);
+        }
         break;
       case 'bossDown':
         popText(ev.x, 120, ev.y, ev.lives > 0 ? `还剩 ${ev.lives} 条命!` : '击败!', '#ffd23f', 40);
@@ -993,8 +997,9 @@ function updateCamera(dt, t, me) {
     if (s.phase === 'roundEnd') {
       const w = s.winner != null ? views.get(s.winner) : null;
       if (w && w.visible) {
-        focus.set(w.x, w.ch.root.position.y * 0.6, w.z);
-        dist = 340;
+        // 看点抬高一些，让赢家在画面偏下的位置，不被中间的大字挡住
+        focus.set(w.x, w.ch.root.position.y + 75, w.z);
+        dist = 380;
         pitch = 22;
         yaw = Math.sin(t * 0.5) * 0.7;
       }
@@ -1012,7 +1017,7 @@ function updateCamera(dt, t, me) {
     const dir = new THREE.Vector3(Math.sin(yaw) * Math.cos(pr), Math.sin(pr), Math.cos(yaw) * Math.cos(pr));
     look.copy(focus);
     want.copy(focus).addScaledVector(dir, dist);
-    speed = s.phase === 'countdown' && introT < introDur ? 9 : s.phase === 'roundEnd' ? 2.5 : 4.5;
+    speed = s.phase === 'countdown' && introT < introDur ? 9 : s.phase === 'roundEnd' ? 3.5 : 4.5;
   }
   const k = 1 - Math.exp(-dt * speed);
   camPos.lerp(want, k);
