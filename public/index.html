@@ -6,6 +6,9 @@
   <meta name="theme-color" content="#1b1440" />
   <title>碰碰球大乱斗</title>
   <link rel="stylesheet" href="style.css" />
+  <link rel="icon" type="image/svg+xml" href="logo.svg" />
+  <link rel="apple-touch-icon" href="icons/icon-180.png" />
+  <link rel="manifest" href="manifest.webmanifest" />
   <script type="importmap">
     { "imports": { "three": "./vendor/three.module.min.js", "qrcode": "./vendor/qrcode.mjs" } }
   </script>
@@ -13,6 +16,7 @@
 <body>
   <canvas id="game"></canvas>
   <div id="vignette"></div>
+  <div id="stickerLayer"></div>
 
   <!-- 主菜单 -->
   <section id="scr-menu" class="screen">
@@ -31,8 +35,14 @@
     </header>
     <div class="menu-body">
       <div class="logo">
-        <div class="logo-top">碰碰球</div>
-        <div class="logo-bottom">大乱斗</div>
+        <div class="logo-lockup">
+          <img class="logo-emblem" src="logo.svg" alt="" draggable="false" />
+          <div class="logo-words">
+            <div class="logo-top">碰碰球</div>
+            <div class="logo-bottom">大乱斗</div>
+          </div>
+        </div>
+        <div class="logo-sub"><span class="sub-zh">BUMPER BRAWL</span><span class="sub-en" data-no-i18n>碰碰球大乱斗</span></div>
         <div class="logo-tag">7 种模式 · 4 张地图 · 最多 8 人同乐</div>
       </div>
       <div class="menu-actions">
@@ -172,6 +182,7 @@
     <footer class="results-foot">
       <button class="btn btn-ghost" id="resLeave">离开房间</button>
       <button class="btn btn-ghost" id="resBoard">🏆 排行榜</button>
+      <button class="btn btn-ghost" id="btnEmoteRes" title="表情 / 贴图（T 快速嘲讽）">😜 嘲讽</button>
       <button class="btn btn-blue host-only" id="resLobby">返回房间</button>
       <button class="btn btn-yellow host-only" id="resAgain">再来一局</button>
       <span class="wait-host guest-only">等待房主操作…</span>

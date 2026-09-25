@@ -531,9 +531,57 @@ body:not([data-quality='high']) .modal {
   }
 }
 
+.logo-lockup {
+  display: flex;
+  align-items: center;
+  gap: clamp(8px, 1.5vw, 18px);
+}
+
+.logo-emblem {
+  width: clamp(84px, 10vw, 150px);
+  height: auto;
+  flex-shrink: 0;
+  filter: drop-shadow(0 8px 0 rgba(20, 10, 50, 0.55)) drop-shadow(0 16px 24px rgba(0, 0, 0, 0.35));
+  animation: emblem-wobble 2.6s ease-in-out infinite;
+  transform-origin: 50% 80%;
+}
+
+@keyframes emblem-wobble {
+  0%, 100% { transform: rotate(-4deg) scale(1); }
+  45% { transform: rotate(3deg) scale(1.04); }
+  55% { transform: rotate(3deg) scale(0.97, 1.05); }
+}
+
+.logo-sub {
+  display: table;
+  margin: 12px 0 0 calc(clamp(84px, 10vw, 150px) + clamp(8px, 1.5vw, 18px));
+  padding: 4px 14px 4px calc(14px + 0.35em);
+  border-radius: 20px;
+  background: rgba(20, 14, 48, 0.8);
+  border: 2px solid rgba(255, 255, 255, 0.18);
+  font-size: clamp(12px, 1.4vw, 16px);
+  font-weight: 900;
+  letter-spacing: 0.35em;
+  color: #ffd23f;
+}
+
+/* 英文字母比汉字宽，缩小一点免得挡住中间的角色 */
+html[lang='en'] .logo-top,
+html[lang='en'] .logo-bottom {
+  font-size: clamp(42px, 5.4vw, 74px);
+}
+html[lang='en'] .logo-bottom {
+  margin-left: 0.35em;
+}
+
+html[lang='en'] .sub-zh,
+html:not([lang='en']) .sub-en {
+  display: none;
+}
+
 .logo-top,
 .logo-bottom {
-  font-size: clamp(54px, 8vw, 96px);
+  font-size: clamp(50px, 6.6vw, 88px);
   font-weight: 900;
   line-height: 1;
   letter-spacing: 4px;
@@ -2082,6 +2130,16 @@ tr.win td {
   .logo-tag {
     font-size: 13px;
   }
+  .logo-lockup {
+    justify-content: center;
+  }
+  .logo-emblem {
+    width: 92px;
+  }
+  .logo-sub {
+    margin: 8px auto 0;
+    font-size: 11px;
+  }
   .menu-actions {
     margin: auto 0 0;
     width: 100%;
@@ -2162,6 +2220,13 @@ tr.win td {
   .logo-top,
   .logo-bottom {
     font-size: 44px;
+  }
+  .logo-emblem {
+    width: 78px;
+  }
+  .logo-sub {
+    margin: 4px 0 0 90px;
+    font-size: 11px;
   }
   .logo-tag {
     margin-top: 10px;
@@ -2397,4 +2462,170 @@ tr.win td {
 .invite-body .qr img {
   width: 150px;
   height: 150px;
+}
+
+/* ---------- 贴图 / 动图表情 ---------- */
+.stk {
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  font-family: var(--font);
+}
+.stk g[class*='stk-'] {
+  transform-box: fill-box;
+  transform-origin: center;
+}
+.stk .stk-wave,
+.stk .stk-reach {
+  transform-box: view-box;
+}
+.stk .stk-delay {
+  animation-delay: -0.35s !important;
+}
+.stk-shake { animation: stk-shake 0.32s ease-in-out infinite; }
+.stk-sway { animation: stk-sway 0.9s ease-in-out infinite; }
+.stk-hop { animation: stk-hop 0.45s ease-in-out infinite; }
+.stk-pulse { animation: stk-pulse 0.6s ease-in-out infinite; }
+.stk-rattle { animation: stk-rattle 0.12s linear infinite; }
+.stk-wave { animation: stk-wave 0.5s ease-in-out infinite alternate; }
+.stk-reach { animation: stk-reach 0.4s ease-in-out infinite alternate; }
+.stk-tongue { animation: stk-tongue 0.25s ease-in-out infinite alternate; transform-origin: top !important; }
+.stk-tear-l { animation: stk-tear-l 0.7s ease-out infinite; }
+.stk-tear-r { animation: stk-tear-r 0.7s ease-out infinite; }
+.stk-drip { animation: stk-drip 0.9s ease-in infinite; }
+.stk-stream { animation: stk-stream 0.5s linear infinite; stroke-dasharray: 6 5; }
+.stk-steam { animation: stk-steam 1s ease-out infinite; }
+.stk-float { animation: stk-float 1.6s ease-in-out infinite; }
+.stk-honk { animation: stk-honk 0.8s ease-in-out infinite; }
+.stk-burst { animation: stk-burst 1.2s linear infinite; }
+.stk-run { animation: stk-run 0.3s ease-in-out infinite alternate; }
+.stk-puff { animation: stk-puff 0.6s ease-out infinite; }
+.stk-text { animation: stk-text 0.9s ease-in-out infinite; }
+.stk-blink { animation: stk-blink 3s infinite; }
+.stk:not(.stk-anim) .stk-blink { animation: none; }
+@keyframes stk-shake { 0%, 100% { transform: rotate(-6deg) translateY(0); } 50% { transform: rotate(6deg) translateY(-3px); } }
+@keyframes stk-sway { 0%, 100% { transform: rotate(-8deg); } 50% { transform: rotate(8deg); } }
+@keyframes stk-hop { 0%, 100% { transform: translateY(0) scale(1.04, 0.96); } 50% { transform: translateY(-10px) scale(0.97, 1.03); } }
+@keyframes stk-pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.08); } }
+@keyframes stk-rattle { 0% { transform: translate(-1.5px, 0); } 50% { transform: translate(1.5px, 1px); } 100% { transform: translate(-1.5px, 0); } }
+@keyframes stk-wave { from { transform: rotate(-22deg); } to { transform: rotate(22deg); } }
+@keyframes stk-reach { from { transform: translateX(0); } to { transform: translateX(-6px) rotate(-10deg); } }
+@keyframes stk-tongue { from { transform: scaleY(0.8) rotate(-8deg); } to { transform: scaleY(1.15) rotate(8deg); } }
+@keyframes stk-tear-l { 0% { transform: translate(0, 0); opacity: 1; } 100% { transform: translate(-12px, 10px); opacity: 0; } }
+@keyframes stk-tear-r { 0% { transform: translate(0, 0); opacity: 1; } 100% { transform: translate(12px, 10px); opacity: 0; } }
+@keyframes stk-drip { 0% { transform: translateY(0); opacity: 1; } 100% { transform: translateY(26px); opacity: 0; } }
+@keyframes stk-stream { to { stroke-dashoffset: -11; } }
+@keyframes stk-steam { 0% { transform: translateY(8px) scale(0.6); opacity: 0; } 30% { opacity: 1; } 100% { transform: translateY(-12px) scale(1.2); opacity: 0; } }
+@keyframes stk-float { 0%, 100% { transform: translateY(0) rotate(-4deg); } 50% { transform: translateY(-9px) rotate(4deg); } }
+@keyframes stk-honk { 0%, 60%, 100% { transform: scale(1); } 70% { transform: scale(1.5); } 80% { transform: scale(0.9); } }
+@keyframes stk-burst { from { transform: rotate(0) scale(1); } 50% { transform: rotate(18deg) scale(1.08); } to { transform: rotate(36deg) scale(1); } }
+@keyframes stk-run { from { transform: translate(-4px, 0) rotate(-15deg); } to { transform: translate(4px, -4px) rotate(15deg); } }
+@keyframes stk-puff { 0% { transform: translateX(6px) scale(0.5); opacity: 1; } 100% { transform: translateX(-8px) scale(1.2); opacity: 0; } }
+@keyframes stk-text { 0%, 100% { transform: translateY(0) rotate(-2deg); } 50% { transform: translateY(-3px) rotate(2deg); } }
+@keyframes stk-blink { 0%, 94%, 100% { transform: scaleY(1); } 97% { transform: scaleY(0.1); } }
+
+/* 头顶上冒出来的贴图 */
+#stickerLayer {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 8;
+  overflow: hidden;
+}
+.head-sticker {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 132px;
+  height: 132px;
+  margin: -132px 0 0 -66px;
+  will-change: transform;
+  filter: drop-shadow(0 4px 0 rgba(0, 0, 0, 0.25));
+}
+.head-sticker > div {
+  width: 100%;
+  height: 100%;
+  animation: sticker-pop 0.45s cubic-bezier(0.2, 1.8, 0.4, 1) both;
+  transform-origin: 50% 100%;
+}
+.head-sticker.out > div {
+  animation: sticker-out 0.3s ease-in both;
+}
+.head-sticker .who {
+  position: absolute;
+  left: 50%;
+  top: -14px;
+  transform: translateX(-50%);
+  white-space: nowrap;
+  font-size: 12px;
+  font-weight: 800;
+  color: #fff;
+  background: rgba(20, 14, 48, 0.75);
+  padding: 1px 8px;
+  border-radius: 10px;
+}
+@keyframes sticker-pop { from { transform: scale(0) rotate(-20deg); } to { transform: scale(1) rotate(0); } }
+@keyframes sticker-out { to { transform: scale(0.2) translateY(20px); opacity: 0; } }
+
+/* 选择器里的标签页和贴图格子 */
+.emote-tabs {
+  grid-column: 1 / -1;
+  display: flex;
+  gap: 4px;
+  margin-bottom: 2px;
+}
+.emote-tabs button {
+  flex: 1;
+  width: auto !important;
+  height: 32px !important;
+  font-size: 13px !important;
+  font-weight: 800;
+  color: #fff;
+  font-family: var(--font);
+}
+.emote-tabs button.on {
+  background: var(--yellow) !important;
+  color: #2a1640;
+}
+.emote-picker.stickers button:not(.tab) {
+  width: 68px;
+  height: 68px;
+  padding: 2px;
+}
+.emote-picker .stk-hint {
+  grid-column: 1 / -1;
+  font-size: 11px;
+  color: var(--muted);
+  text-align: center;
+}
+.chat-log .chat-sticker {
+  display: inline-block;
+  width: 64px;
+  height: 64px;
+  vertical-align: middle;
+}
+.kf .kf-sticker {
+  display: inline-block;
+  width: 34px;
+  height: 34px;
+  vertical-align: middle;
+}
+@media (max-height: 500px), (max-width: 600px) {
+  .head-sticker {
+    width: 84px;
+    height: 84px;
+    margin: -84px 0 0 -42px;
+  }
+  .emote-picker.stickers button:not(.tab) {
+    width: 54px;
+    height: 54px;
+  }
+  .chat-log .chat-sticker {
+    width: 44px;
+    height: 44px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .stk g[class*='stk-'] { animation: none !important; }
 }

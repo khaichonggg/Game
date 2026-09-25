@@ -225,6 +225,29 @@ const EN = {
   '无法重新连接到房间，请确认开服的电脑还在运行。': 'Could not reconnect, is the host computer still running?',
   '<br>💡 至少 2 人（人不够可以加机器人）': '<br>💡 At least 2 players (add bots if needed)',
   '游戏里和大厅里都能发表情嘲讽对手（每秒最多一个）': 'Emotes work in the lobby and in game (one per second)',
+  '表情 & 嘲讽贴图': 'Emotes & taunt stickers',
+  '点 😀 按钮选表情、贴图或动图，发出来会冒在你头顶，角色还会跟着做动作。按 T 快速再发一次上一个贴图，结算画面也能嘲讽！':
+    'Tap 😀 to pick an emote, sticker or animated sticker. It pops up above your head and your character acts it out. Press T to resend your last sticker; you can taunt on the results screen too!',
+  '😀 表情': '😀 Emoji',
+  '🖼️ 贴图': '🖼️ Stickers',
+  '✨ 动图': '✨ Animated',
+  '按 T 快速发送上一次用的贴图': 'Press T to resend your last sticker',
+  '😜 嘲讽': '😜 Taunt',
+  '表情 / 贴图（T 快速嘲讽）': 'Emotes / stickers (T to taunt)',
+  哈哈哈: 'LOL',
+  略略略: 'Bleh~',
+  来追我呀: 'Catch me!',
+  拜拜了您嘞: 'Bye bye~',
+  呜呜呜: 'Waaah',
+  气死我了: 'So mad!',
+  安息吧: 'R.I.P.',
+  小丑竟是我: "I'm the clown",
+  看我大招: 'Ultimate!',
+  '等等我！': 'Wait up!',
+  '就这？': "That's it?",
+  '菜！': 'Noob!',
+  '对不起啦~': 'Oopsie~',
+  轻松拿下: 'EZ',
   '💧 {0} 掉下去了': '💧 {0} fell off',
   '💣 {0} 被炸出局': '💣 {0} blew up',
   '👑 {0} 掉了皇冠': '👑 {0} dropped the crown',
@@ -331,8 +354,8 @@ const EN = {
   '<p>{0}</p><p class="hint">需要能访问 GitHub（github.com）。如果你平时要开代理，请在运行游戏前设置 HTTPS_PROXY 环境变量。</p>': '<p>{0}</p><p class="hint">GitHub (github.com) must be reachable. If you use a proxy, set the HTTPS_PROXY environment variable before starting the game.</p>',
   '<div class="empty"><div class="big">🏝️</div>附近还没有公开房间<br><button class="btn btn-blue" data-create="1">🏠 自己开一个</button></div>': '<div class="empty"><div class="big">🏝️</div>No public rooms nearby yet<br><button class="btn btn-blue" data-create="1">🏠 Create one</button></div>',
   '<div class="hud-pill">第 {0}/{1} 关 · {2} <small>{3}</small></div><div class="hud-pill" style="font-size:16px">{4}　❤️ {5}</div>': '<div class="hud-pill">Stage {0}/{1} · {2} <small>{3}</small></div><div class="hud-pill" style="font-size:16px">{4}  ❤️ {5}</div>',
-  '<span class="keys">W</span><span class="keys">A</span><span class="keys">S</span><span class="keys">D</span> 或方向键移动<br><span class="keys">空格</span> / <span class="keys">Shift</span> / <span class="keys">J</span> 冲刺<br><span class="keys">1</span>~<span class="keys">8</span> 发表情　<span class="keys">Esc</span> 菜单<br>大厅里按 <span class="keys">回车</span> 聊天':
-    '<span class="keys">W</span><span class="keys">A</span><span class="keys">S</span><span class="keys">D</span> or arrows to move<br><span class="keys">Space</span> / <span class="keys">Shift</span> / <span class="keys">J</span> to dash<br><span class="keys">1</span>~<span class="keys">8</span> emotes  <span class="keys">Esc</span> menu<br><span class="keys">V</span> first person  <span class="keys">Enter</span> chat',
+  '<span class="keys">W</span><span class="keys">A</span><span class="keys">S</span><span class="keys">D</span> 或方向键移动<br><span class="keys">空格</span> / <span class="keys">Shift</span> / <span class="keys">J</span> 冲刺<br><span class="keys">1</span>~<span class="keys">8</span> 发表情　<span class="keys">T</span> 嘲讽贴图　<span class="keys">Esc</span> 菜单<br>大厅里按 <span class="keys">回车</span> 聊天':
+    '<span class="keys">W</span><span class="keys">A</span><span class="keys">S</span><span class="keys">D</span> or arrows to move<br><span class="keys">Space</span> / <span class="keys">Shift</span> / <span class="keys">J</span> to dash<br><span class="keys">1</span>~<span class="keys">8</span> emotes  <span class="keys">T</span> taunt  <span class="keys">Esc</span> menu<br><span class="keys">V</span> first person  <span class="keys">Enter</span> chat',
   好的: 'OK',
   '击败!': 'Defeated!',
   '抓住了!': 'Caught!',
@@ -605,7 +628,7 @@ export function applyStatic() {
     collected = true;
     const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
     for (let n = walker.nextNode(); n; n = walker.nextNode()) {
-      if (CJK.test(n.nodeValue) && !n.parentElement.closest('script, style')) staticNodes.push({ n, zh: n.nodeValue });
+      if (CJK.test(n.nodeValue) && !n.parentElement.closest('script, style, [data-no-i18n]')) staticNodes.push({ n, zh: n.nodeValue });
     }
     document.querySelectorAll('[placeholder], [title], [alt]').forEach((el) => {
       for (const a of ['placeholder', 'title', 'alt']) {

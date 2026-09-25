@@ -1,6 +1,6 @@
 {
   "name": "bumper-balls",
-  "version": "2.2.1",
+  "version": "2.3.0",
   "description": "碰碰球大乱斗 - 轻量多人在线派对游戏",
   "main": "server.js",
   "scripts": {
@@ -26,5 +26,5 @@
     "branch": "",
     "fallbackBranch": "claude/loving-babbage-zumou8"
   },
-  "releaseNotes": "手机横屏大厅不再拥挤：地图图标不挡字、面板不和底部按钮相撞、邀请按钮标明「房间码」、聊天停在最新消息"
+  "releaseNotes": "新 Logo；16 个嘲讽贴图（10 个会动），冒在头顶还会带动作和音效，按 T 一键嘲讽，机器人也会嘲讽你"
 }

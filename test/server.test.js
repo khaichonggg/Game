@@ -1,6 +1,7 @@
 // 联网集成测试：真实启动服务器，用 WebSocket 客户端走一遍组队流程
 const { spawn } = require('child_process');
 const path = require('path');
+const fs = require('fs');
 const WebSocket = require('../server/vendor/ws'); // 自带的 ws，不需要 npm install
 const { check, done } = require('./helpers');
 
@@ -11,12 +12,15 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 function client(joinMsg) {
   return new Promise((resolve) => {
     const ws = new WebSocket(URL);
-    const c = { ws, msgs: [], state: null };
+    const c = { ws, msgs: [], state: null, events: [] };
     c.last = (t) => [...c.msgs].reverse().find((m) => m.t === t);
     c.send = (m) => ws.send(JSON.stringify(m));
     ws.on('message', (raw) => {
       const m = JSON.parse(raw);
-      if (m.t === 'state') c.state = m;
+      if (m.t === 'state') {
+        c.state = m;
+        c.events.push(...(m.events || []));
+      }
       else c.msgs.push(m);
     });
     ws.on('open', () => {
@@ -33,6 +37,11 @@ const api = async (p) => (await fetch(`http://127.0.0.1:${PORT}${p}`)).json();
   srv.stdout.on('data', (d) => (out += d));
   for (let i = 0; i < 40 && !out.includes('已启动'); i++) await sleep(100);
   try {
+    // 服务器和客户端的贴图列表要一致
+    const clientIds = [...fs.readFileSync(path.join(__dirname, '..', 'public', 'js', 'stickers.js'), 'utf8').matchAll(/id: '(\w+)'/g)].map((m) => m[1]);
+    const { STICKERS } = require('../server/catalog');
+    check(clientIds.length >= 12 && clientIds.slice().sort().join() === STICKERS.slice().sort().join(), `服务器和客户端的贴图列表一致（${STICKERS.length} 个）`);
+
     const info = await api('/api/info');
     check(Array.isArray(info.lan) && info.port === PORT, `/api/info 返回局域网地址（${info.lan.join(', ') || '无网卡'}）`);
 
@@ -96,7 +105,22 @@ const api = async (p) => (await fetch(`http://127.0.0.1:${PORT}${p}`)).json();
     await sleep(100);
     check(b3.last('pong') && b3.last('pong').c === 123, '延迟测量 ping/pong');
 
-    for (const c of [a, b2, b3, q, q2, bad]) c.ws.close();
+    // 贴图：所有人都收到；连发会被限速；乱写的 id 会被忽略
+    b3.send({ t: 'sticker', s: 'lol' });
+    b3.send({ t: 'sticker', s: 'bleh' });
+    b3.send({ t: 'sticker', s: '<img onerror=x>' });
+    await sleep(200);
+    const stk = a.events.filter((e) => e.type === 'chat' && e.sticker);
+    check(stk.length === 1 && stk[0].sticker === 'lol' && stk[0].id === bId, '贴图发给房间里所有人，1.5 秒内连发只算一个');
+    const q3 = await client({ room: code, name: '后来的', token: 'L' });
+    check(q3.last('chatlog') && q3.last('chatlog').list.some((l) => l.sticker === 'lol'), '贴图会留在聊天记录里，后进来的人也看得到');
+    await sleep(1500);
+    b3.send({ t: 'sticker', s: 'nope' });
+    b3.send({ t: 'sticker', s: 'gg' });
+    await sleep(200);
+    check(a.events.filter((e) => e.sticker).map((e) => e.sticker).join() === 'lol,gg', '不存在的贴图 id 被忽略');
+
+    for (const c of [a, b2, b3, q, q2, q3, bad]) c.ws.close();
   } finally {
     srv.kill();
   }

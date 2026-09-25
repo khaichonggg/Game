@@ -110,6 +110,57 @@ export const sfx = {
   chat: () => tone({ f: 1250, dur: 0.07, type: 'sine', vol: 0.07 }),
   ready: () => arp([79, 84], 0.06, { type: 'square', vol: 0.08 }),
   emote: () => tone({ f: 800, f2: 1400, dur: 0.09, type: 'sine', vol: 0.09 }),
+  // 贴图 / 嘲讽音效
+  sticker(kind) {
+    const S = {
+      laugh: () => [760, 680, 610, 540, 480].forEach((f, i) => tone({ f, f2: f * 0.85, dur: 0.08, type: 'square', vol: 0.07, at: i * 0.1, lp: 2400 })),
+      bleh: () => {
+        tone({ f: 150, f2: 95, dur: 0.55, type: 'sawtooth', vol: 0.12, lp: 900 });
+        noise({ dur: 0.5, vol: 0.08, type: 'bandpass', f: 520, f2: 300, q: 3 });
+      },
+      boing: () => {
+        tone({ f: 180, f2: 900, dur: 0.16, type: 'sine', vol: 0.14 });
+        tone({ f: 900, f2: 260, dur: 0.3, type: 'sine', vol: 0.1, at: 0.16 });
+      },
+      bye: () => arp([79, 76, 72], 0.12, { type: 'triangle', vol: 0.12, dur: 0.2 }),
+      cry: () => {
+        [63, 62, 61].forEach((n, i) => tone({ f: midi(n), dur: 0.3, type: 'sawtooth', vol: 0.08, at: i * 0.32, lp: 1300 }));
+        tone({ f: midi(60), f2: midi(58), dur: 0.8, type: 'sawtooth', vol: 0.08, at: 0.96, lp: 1100 });
+      },
+      mad: () => {
+        tone({ f: 95, f2: 75, dur: 0.5, type: 'sawtooth', vol: 0.14, lp: 700 });
+        noise({ dur: 0.45, vol: 0.08, type: 'lowpass', f: 900 });
+      },
+      rip: () => {
+        tone({ f: 880, f2: 330, dur: 0.9, type: 'sine', vol: 0.08 });
+        tone({ f: 887, f2: 333, dur: 0.9, type: 'sine', vol: 0.05 });
+      },
+      honk: () =>
+        [0, 0.24].forEach((at) => {
+          tone({ f: 440, dur: 0.16, type: 'square', vol: 0.08, at, lp: 1800 });
+          tone({ f: 554, dur: 0.16, type: 'square', vol: 0.06, at, lp: 1800 });
+        }),
+      boom: () => {
+        noise({ dur: 0.9, vol: 0.28, type: 'lowpass', f: 1400, f2: 70 });
+        tone({ f: 130, f2: 40, dur: 0.7, type: 'sine', vol: 0.22 });
+      },
+      wait: () => arp([72, 74, 76, 79], 0.06, { type: 'square', vol: 0.07, dur: 0.08 }),
+      hmm: () => {
+        tone({ f: 280, f2: 340, dur: 0.18, type: 'triangle', vol: 0.12 });
+        tone({ f: 340, f2: 290, dur: 0.22, type: 'triangle', vol: 0.12, at: 0.2 });
+      },
+      cool: () => arp([72, 79, 84, 91], 0.07, { type: 'triangle', vol: 0.09, dur: 0.25 }),
+      ding: () => {
+        tone({ f: 1320, dur: 0.45, type: 'sine', vol: 0.12 });
+        tone({ f: 1760, dur: 0.5, type: 'sine', vol: 0.08, at: 0.1 });
+      },
+      oops: () => {
+        tone({ f: 620, f2: 320, dur: 0.18, type: 'sine', vol: 0.12 });
+        tone({ f: 420, f2: 240, dur: 0.22, type: 'sine', vol: 0.1, at: 0.2 });
+      },
+    };
+    (S[kind] || S.boing)();
+  },
   countdown: () => tone({ f: 523, dur: 0.16, vol: 0.12 }),
   go: () => {
     tone({ f: 1047, dur: 0.4, vol: 0.12 });

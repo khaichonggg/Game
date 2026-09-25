@@ -1,0 +1,63 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256">
+  <!-- 碰碰球大乱斗 / Bumper Brawl：两颗球迎面相撞 -->
+  <defs>
+    <radialGradient id="bg" cx="0.5" cy="0.38" r="0.7">
+      <stop offset="0" stop-color="#6a4de0"/>
+      <stop offset="1" stop-color="#2a1a6e"/>
+    </radialGradient>
+    <radialGradient id="red" cx="0.34" cy="0.3" r="0.8">
+      <stop offset="0" stop-color="#ffb3b0"/>
+      <stop offset="0.35" stop-color="#ff5a5f"/>
+      <stop offset="1" stop-color="#d8323f"/>
+    </radialGradient>
+    <radialGradient id="blue" cx="0.34" cy="0.3" r="0.8">
+      <stop offset="0" stop-color="#b8e6ff"/>
+      <stop offset="0.35" stop-color="#3fa7ff"/>
+      <stop offset="1" stop-color="#1f6fd6"/>
+    </radialGradient>
+    <clipPath id="badge"><circle cx="128" cy="128" r="118"/></clipPath>
+  </defs>
+
+  <!-- 徽章底 -->
+  <circle cx="128" cy="128" r="124" fill="#2a1640"/>
+  <circle cx="128" cy="128" r="118" fill="url(#bg)"/>
+  <g clip-path="url(#badge)" opacity="0.18" stroke="#fff" stroke-width="10" stroke-linecap="round">
+    <path d="M-10 190 L90 90 M20 250 L170 100 M120 270 L270 120"/>
+  </g>
+  <!-- 地面 -->
+  <ellipse cx="128" cy="206" rx="92" ry="14" fill="#1a0f44" opacity="0.55"/>
+
+  <!-- 速度线 -->
+  <g stroke="#fff" stroke-width="7" stroke-linecap="round" opacity="0.85">
+    <path d="M18 112 h26 M12 138 h34 M22 164 h22"/>
+    <path d="M238 104 h-22 M244 130 h-30 M236 156 h-20"/>
+  </g>
+
+  <!-- 撞击星 -->
+  <g transform="translate(128 78) scale(1.3) translate(-128 -112)">
+  <path d="M128 58 l12 30 l30 -14 l-10 30 l32 6 l-28 18 l22 24 l-32 -2 l2 32 l-26 -20 l-26 20 l2 -32 l-32 2 l22 -24 l-28 -18 l32 -6 l-10 -30 l30 14z"
+        fill="#ffd23f" stroke="#2a1640" stroke-width="6" stroke-linejoin="round"/>
+  <path d="M128 92 l6 16 l16 -6 l-6 16 l16 4 l-16 8 l10 12 l-16 -2 l0 16 l-10 -12 l-10 12 l0 -16 l-16 2 l10 -12 l-16 -8 l16 -4 l-6 -16 l16 6z" fill="#fff"/>
+  </g>
+
+  <!-- 红球（冲过来，气势汹汹） -->
+  <g transform="rotate(-8 84 148)">
+    <ellipse cx="84" cy="148" rx="54" ry="50" fill="url(#red)" stroke="#2a1640" stroke-width="7"/>
+    <ellipse cx="64" cy="118" rx="15" ry="8" fill="#fff" opacity="0.6" transform="rotate(-25 64 118)"/>
+    <path d="M70 130 l20 8 M118 128 l-16 9" stroke="#2a1640" stroke-width="7" stroke-linecap="round"/>
+    <circle cx="82" cy="146" r="7" fill="#2a1640"/><circle cx="84" cy="143" r="2.4" fill="#fff"/>
+    <circle cx="108" cy="146" r="7" fill="#2a1640"/><circle cx="110" cy="143" r="2.4" fill="#fff"/>
+    <path d="M84 166 Q98 178 114 164" stroke="#2a1640" stroke-width="6" fill="none" stroke-linecap="round"/>
+    <path d="M90 170 l4 6 l5 -5" fill="#fff" stroke="#2a1640" stroke-width="2.5" stroke-linejoin="round"/>
+  </g>
+
+  <!-- 蓝球（被撞扁，吓一跳） -->
+  <g transform="rotate(10 178 146)">
+    <ellipse cx="180" cy="146" rx="44" ry="54" fill="url(#blue)" stroke="#2a1640" stroke-width="7"/>
+    <ellipse cx="170" cy="114" rx="12" ry="7" fill="#fff" opacity="0.6" transform="rotate(-25 170 114)"/>
+    <circle cx="166" cy="140" r="10" fill="#fff" stroke="#2a1640" stroke-width="4"/><circle cx="164" cy="141" r="4.5" fill="#2a1640"/>
+    <circle cx="192" cy="140" r="10" fill="#fff" stroke="#2a1640" stroke-width="4"/><circle cx="190" cy="141" r="4.5" fill="#2a1640"/>
+    <ellipse cx="178" cy="168" rx="8" ry="10" fill="#7a1f3d" stroke="#2a1640" stroke-width="4"/>
+    <path d="M208 108 q-6 10 0 15 q6 -5 0 -15z" fill="#8ad8ff" stroke="#2a1640" stroke-width="3"/>
+  </g>
+</svg>

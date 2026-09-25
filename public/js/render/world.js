@@ -9,6 +9,7 @@ import { makeItemModel, makeTornado, makeBanana, makeMeteor, makeCrown, makeBall
 import { sfx } from '../audio.js';
 import { ITEMS, TEAM_COLORS, EMOTES } from '../data.js';
 import { settings } from '../settings.js';
+import { stickerSVG, STICKER_MAP } from '../stickers.js';
 
 const DASH_COOLDOWN = 1.2;
 let view = 'menu'; // menu | wardrobe | room
@@ -122,6 +123,7 @@ function makeView(p, teamMode) {
 function disposeView(v) {
   scene.remove(v.ch.root, v.shadow);
   v.ch.dispose();
+  clearSticker(v);
   for (const s of [v.label, v.bubble]) {
     if (!s) continue;
     scene.remove(s);
@@ -153,6 +155,41 @@ export function showEmote(id, i) {
   v.bubbleT = 2.5;
   scene.add(v.bubble);
   v.ch.bounce(5);
+}
+
+// 贴图：用 HTML 叠在 3D 画面上（这样动图的动画能正常播放），每帧跟着角色头顶走
+const stickerLayer = document.getElementById('stickerLayer');
+const stickerPos = new THREE.Vector3();
+function clearSticker(v) {
+  if (!v.sticker) return;
+  v.sticker.el.remove();
+  v.sticker = null;
+}
+export function showSticker(id, sid) {
+  const v = views.get(id);
+  if (!v || !STICKER_MAP[sid]) return;
+  clearSticker(v);
+  if (v.bubble) v.bubbleT = 0;
+  const el = document.createElement('div');
+  el.className = 'head-sticker';
+  el.style.display = 'none';
+  el.innerHTML = `<div>${stickerSVG(sid)}</div>`;
+  stickerLayer.appendChild(el);
+  v.sticker = { el, end: performance.now() + 3200, out: false };
+  v.ch.taunt(STICKER_MAP[sid].act);
+}
+function updateSticker(v, headY, show) {
+  const st = v.sticker;
+  const left = st.end - performance.now(); // 用真实时间：画面卡的时候也准时消失
+  if (left <= 0) return clearSticker(v);
+  if (left < 300 && !st.out) {
+    st.out = true;
+    st.el.classList.add('out');
+  }
+  stickerPos.set(v.x, headY, v.z).project(camera);
+  const on = show && stickerPos.z < 1 && Math.abs(stickerPos.x) < 1.15 && Math.abs(stickerPos.y) < 1.15;
+  st.el.style.display = on ? '' : 'none';
+  if (on) st.el.style.transform = `translate(${((stickerPos.x + 1) / 2) * window.innerWidth}px, ${((1 - stickerPos.y) / 2) * window.innerHeight}px)`;
 }
 
 function lerpAngle(a, b, k) {
@@ -386,6 +423,7 @@ function updatePlayers(dt, t, rdt) {
         v.bubble = null;
       }
     }
+    if (v.sticker) updateSticker(v, root.position.y + sc * 1.6 + 24, visible && !(fpActive && p.id === myId));
     if (p.id === myId) me = { p, v, visible };
   });
 

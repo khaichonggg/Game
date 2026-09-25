@@ -100,6 +100,26 @@ class Room {
     this.event(msg);
   }
 
+  // 贴图也进聊天记录（大厅里看得到），客户端收到后在头顶冒出来
+  sticker(p, s) {
+    const now = Date.now();
+    if (!catalog.STICKERS.includes(s) || now - (p.stickerT || 0) < 1500) return false;
+    p.stickerT = now;
+    const msg = { type: 'chat', n: ++this.chatSeq, id: p.id, name: p.name, text: '', sticker: s };
+    this.chatLog.push(msg);
+    if (this.chatLog.length > 40) this.chatLog.shift();
+    this.event(msg);
+    return true;
+  }
+
+  // 机器人偶尔也会嘲讽一下
+  botTaunt(p, list, chance) {
+    if (!p || !p.bot || Math.random() > chance) return;
+    const now = Date.now();
+    if (now - (p.stickerT || 0) < 6000) return;
+    this.sticker(p, list[Math.floor(Math.random() * list.length)]);
+  }
+
   // ------------------------------------------------------------------
   // 玩家进出
   // ------------------------------------------------------------------
@@ -254,6 +274,9 @@ class Room {
         }
         break;
       }
+      case 'sticker':
+        this.sticker(p, String(msg.s || ''));
+        break;
       case 'emote': {
         const i = Number(msg.i);
         const now = Date.now();
@@ -1028,6 +1051,8 @@ class Room {
           killer.kills++;
           killer.stats.kills++;
           this.event({ type: 'ko', id: killer.id, victim: b.id });
+          this.botTaunt(killer, ['lol', 'bleh', 'noob', 'ez', 'weak', 'bye', 'catch'], 0.35);
+          this.botTaunt(b, ['cry', 'mad', 'rip', 'wait'], 0.2);
         }
         if (mode.onPlayerFall) mode.onPlayerFall(this, b, killer);
       } else {

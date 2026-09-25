@@ -8,6 +8,7 @@ import { sfx, unlock, applyVolumes, playMusic } from './audio.js';
 import { settings, saveSettings, profile, saveProfile, playerName, setPlayerName, token, lastRoom, isTouch } from './settings.js';
 import { CHARACTERS, SKINS, HATS, COLORS, MAPS, MODES, ITEMS, TEAM_COLORS, TEAM_NAMES, BOT_LEVELS, charInfo } from './data.js';
 import { input } from './input.js';
+import { STICKER_MAP, stickerSVG } from './stickers.js';
 import { $, esc, fmtTime, show, current, avatarHTML, notice, modal, closeModal, modalOpen, initEmotes, toggleEmotes, hideEmotes, copyText, setHTML } from './ui.js';
 
 const MAP_IDS = Object.keys(MAPS);
@@ -327,6 +328,12 @@ function uiEvents(events) {
         chatLines.push(ev);
         if (chatLines.length > 40) chatLines.shift();
         renderChat();
+        if (ev.sticker) {
+          world.showSticker(ev.id, ev.sticker);
+          sfx.sticker(STICKER_MAP[ev.sticker] && STICKER_MAP[ev.sticker].snd);
+          if (current === 'game') killfeed(`${nameTag(ev.id)} <span class="kf-sticker">${stickerSVG(ev.sticker, { label: false })}</span> ${esc(stickerName(ev.sticker))}`, false, 4000);
+          break;
+        }
         if (!ev.sys && ev.id !== myId) sfx.chat();
         if (current === 'game') killfeed(ev.sys ? `<span style="color:#b9b0e8">${esc(chatText(ev))}</span>` : tr('💬 {0}：{1}', nameTag(ev.id), esc(ev.text)), false, 5000);
         break;
@@ -767,7 +774,11 @@ new ResizeObserver(() => chatStick && ($('chatLog').scrollTop = $('chatLog').scr
 function renderChat() {
   const el = $('chatLog');
   el.innerHTML = chatLines
-    .map((c) => (c.sys ? `<div class="sys">${esc(chatText(c))}</div>` : `<div><b style="color:${esc(colorOf(c.id))}">${esc(c.name)}</b>${esc(c.text)}</div>`))
+    .map((c) =>
+      c.sys
+        ? `<div class="sys">${esc(chatText(c))}</div>`
+        : `<div><b style="color:${esc(colorOf(c.id))}">${esc(c.name)}</b>${c.sticker ? `<span class="chat-sticker">${stickerSVG(c.sticker)}</span>` : esc(c.text)}</div>`
+    )
     .join('');
   if (chatStick) el.scrollTop = el.scrollHeight;
 }
@@ -1003,7 +1014,26 @@ $('chatInput').addEventListener('keydown', (e) => {
 });
 $('btnEmoteLobby').onclick = (e) => toggleEmotes(e.currentTarget);
 $('btnEmote').onclick = (e) => toggleEmotes(e.currentTarget);
-initEmotes((i) => send({ t: 'emote', i }));
+$('btnEmoteRes').onclick = (e) => toggleEmotes(e.currentTarget);
+// 贴图：记住上一次用的，按 T 快速再发一次（嘲讽专用）
+let lastSticker = 'bleh';
+try {
+  lastSticker = localStorage.getItem('bb_last_sticker') || 'bleh';
+} catch {
+  /* 无痕模式 */
+}
+function sendSticker(id) {
+  if (!STICKER_MAP[id]) return;
+  send({ t: 'sticker', s: id });
+  lastSticker = id;
+  try {
+    localStorage.setItem('bb_last_sticker', id);
+  } catch {
+    /* 无痕模式 */
+  }
+}
+const stickerName = (id) => (STICKER_MAP[id] ? STICKER_MAP[id].name : '');
+initEmotes((i) => send({ t: 'emote', i }), sendSticker);
 
 // 邀请
 async function getInfo() {
@@ -1438,11 +1468,11 @@ async function renderHelp() {
   let html = '';
   if (helpTab === 'controls') {
     html = [
-      card('⌨️', tr('电脑'), tr('<span class="keys">W</span><span class="keys">A</span><span class="keys">S</span><span class="keys">D</span> 或方向键移动<br><span class="keys">空格</span> / <span class="keys">Shift</span> / <span class="keys">J</span> 冲刺<br><span class="keys">1</span>~<span class="keys">8</span> 发表情　<span class="keys">Esc</span> 菜单<br>大厅里按 <span class="keys">回车</span> 聊天')),
+      card('⌨️', tr('电脑'), tr('<span class="keys">W</span><span class="keys">A</span><span class="keys">S</span><span class="keys">D</span> 或方向键移动<br><span class="keys">空格</span> / <span class="keys">Shift</span> / <span class="keys">J</span> 冲刺<br><span class="keys">1</span>~<span class="keys">8</span> 发表情　<span class="keys">T</span> 嘲讽贴图　<span class="keys">Esc</span> 菜单<br>大厅里按 <span class="keys">回车</span> 聊天')),
       card('📱', tr('手机'), tr('左半边屏幕按住拖动 = 摇杆<br>右下角红色大按钮 = 冲刺<br>横屏玩体验更好')),
       card('💥', tr('撞人技巧'), tr('冲刺撞人最狠，冷却 1.2 秒。脚下光圈<b style="display:inline;color:#ffd23f">变黄</b>就能再冲。<br>速度越快、体重越大，撞得越远。')),
       card('🧠', tr('小心'), tr('冰面很滑，停不下来；香蕉皮会让你打滑；被冻住时谁都能推你。靠近边缘时别乱冲！')),
-      card('😀', tr('表情'), tr('游戏里和大厅里都能发表情嘲讽对手（每秒最多一个）')),
+      card('😜', tr('表情 & 嘲讽贴图'), tr('点 😀 按钮选表情、贴图或动图，发出来会冒在你头顶，角色还会跟着做动作。按 T 快速再发一次上一个贴图，结算画面也能嘲讽！')),
       card('🔄', tr('掉线重连'), tr('刷新页面或网络断开后会自动回到原来的房间；比赛中 60 秒内回来，机器人会先帮你顶着。')),
     ].join('');
   } else if (helpTab === 'modes') {
@@ -1683,6 +1713,10 @@ window.addEventListener('keydown', (e) => {
     hideEmotes();
   }
   if (e.code === 'KeyV' && inRoom && current === 'game') toggleView();
+  if (e.code === 'KeyT' && inRoom && (current === 'game' || current === 'lobby' || current === 'results')) {
+    sendSticker(lastSticker);
+    hideEmotes();
+  }
   if (e.key === 'Enter' && current === 'lobby') {
     $('chatInput').focus();
     e.preventDefault();

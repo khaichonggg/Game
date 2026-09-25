@@ -2,7 +2,9 @@
 
 <img src="docs/banner.jpg" alt="Bumper Brawl" width="100%">
 
-# 🎱 Bumper Brawl
+<img src="docs/logo.png" alt="Bumper Brawl logo" width="460">
+
+# Bumper Brawl
 
 **A chaotic 3D party game for 1–8 friends, right in your browser.**
 Bump, dash and shove your friends off crumbling floating arenas — or rope up and escape together.
@@ -30,6 +32,10 @@ Bump, dash and shove your friends off crumbling floating arenas — or rope up a
 - 🎮 **7 very different modes** — free‑for‑all brawls, soccer, crown grab, paint wars, hot potato, a co‑op boss fight, and a **roped‑together co‑op escape**
 - 🧸 **8 characters × 10 skins × 12 colors × 10 hats** — build your own little bumper buddy
 - 💥 **Juicy hits** — squash & stretch, knockback tilt, dizzy stars, comic "POW!" words, screen shake, hit‑stop, bloom and particles
+- 😜 **Taunt stickers** — 16 hand-drawn stickers (10 animated) pop up above your head while your character acts them out: laugh, wiggle, spin, sulk… Press <kbd>T</kbd> to re-send your favourite. Bots taunt back!
+
+  <img src="docs/stickers.gif" alt="Taunt stickers" width="620">
+
 - 🎥 **Third person or first person** — press <kbd>V</kbd> any time
 - 🌐 **English & 中文** — switch languages live, server messages are translated per player
 - 🤖 **Smart bots** — fill empty seats with Easy / Normal / Hard bots
@@ -175,7 +181,7 @@ For a permanent address you can also deploy to any Node + WebSocket host (Render
 
 | | Move | Dash | More |
 | --- | --- | --- | --- |
-| 🖥️ **Keyboard** | <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> / arrows | <kbd>Space</kbd> / <kbd>Shift</kbd> / <kbd>J</kbd> | <kbd>V</kbd> first person · <kbd>1</kbd>–<kbd>8</kbd> emotes · <kbd>Esc</kbd> menu · <kbd>Enter</kbd> chat |
+| 🖥️ **Keyboard** | <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> / arrows | <kbd>Space</kbd> / <kbd>Shift</kbd> / <kbd>J</kbd> | <kbd>V</kbd> first person · <kbd>1</kbd>–<kbd>8</kbd> emotes · <kbd>T</kbd> taunt sticker · <kbd>Esc</kbd> menu · <kbd>Enter</kbd> chat |
 | 📱 **Touch** | drag the left half | big red button | drag the right half to turn in first person |
 
 ## 🔄 Updating
@@ -202,6 +208,8 @@ server/lan.js        LAN address detection & console QR code
 server/vendor/ws/    bundled WebSocket library (MIT) — no npm install needed
 start.bat / start.command / start.sh   double-click launchers
 public/js/           client: UI, i18n, input, audio, 3D rendering
+public/js/stickers.js taunt sticker pack (SVG + CSS animations)
+public/logo.svg      logo / favicon (app icons in public/icons/)
 test/                automated tests (npm test)
 ```
 

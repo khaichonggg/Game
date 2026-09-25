@@ -279,6 +279,8 @@ function onSurface(o, x, y, z, r) {
   return o;
 }
 
+const TAUNT_DUR = 1.4;
+
 export class Character {
   constructor(profile, opts = {}) {
     this.root = new THREE.Group();
@@ -291,6 +293,8 @@ export class Character {
     this.blink = 2 + Math.random() * 3;
     this.opacity = 1;
     this.hopT = Math.random() * 10;
+    this.tauntKind = '';
+    this.tauntT = TAUNT_DUR;
     this.build(profile, opts);
   }
 
@@ -687,6 +691,13 @@ export class Character {
     this.squashV += amount;
   }
 
+  // 嘲讽动作（发贴图时）：spin 转圈 / wiggle 扭屁股 / laugh 笑到后仰 / hop 蹦蹦跳 / stomp 跺脚 / sulk 垂头丧气 / shrug 摊手 / wave 挥手 / cheer 欢呼
+  taunt(kind) {
+    this.tauntKind = kind || 'hop';
+    this.tauntT = 0;
+    this.squashV += 4;
+  }
+
   // s: { speed(0~1), frozen, slip, ghost, shield, speedFx, falling, lean, cheer }
   update(dt, t, s = {}) {
     const d = Math.min(dt, 0.05);
@@ -703,6 +714,7 @@ export class Character {
     body.rotation.z = this.tilt.y;
     if (s.falling) body.rotation.y += dt * 12;
     else body.rotation.y *= 0.85;
+    this.applyTaunt(dt, s);
 
     this.dizzy = Math.max(0, this.dizzy - dt);
     this.blink -= dt;
@@ -763,13 +775,67 @@ export class Character {
     }
   }
 
+  applyTaunt(dt, s) {
+    const body = this.body;
+    if (this.bodyY === undefined) this.bodyY = body.position.y;
+    if (this.tauntT >= TAUNT_DUR || s.frozen || s.falling) {
+      body.position.x = 0;
+      body.position.y += (this.bodyY - body.position.y) * Math.min(1, dt * 12);
+      return;
+    }
+    this.tauntT += dt;
+    const k = Math.min(1, this.tauntT / TAUNT_DUR);
+    const env = Math.sin(Math.PI * k); // 先变大再收回
+    const tt = this.tauntT;
+    let lift = 0;
+    switch (this.tauntKind) {
+      case 'spin': {
+        const a = (1 - Math.pow(1 - k, 3)) * Math.PI * 4;
+        body.rotation.y = Math.atan2(Math.sin(a), Math.cos(a));
+        lift = Math.abs(Math.sin(tt * 7)) * 0.25 * env;
+        break;
+      }
+      case 'wiggle':
+        body.rotation.z += Math.sin(tt * 22) * 0.4 * env;
+        body.rotation.y = Math.sin(tt * 11) * 0.5 * env;
+        break;
+      case 'laugh':
+        body.rotation.x -= 0.35 * env;
+        body.scale.y *= 1 + Math.sin(tt * 38) * 0.09 * env;
+        lift = Math.abs(Math.sin(tt * 19)) * 0.1 * env;
+        break;
+      case 'hop':
+      case 'cheer':
+        lift = Math.abs(Math.sin(tt * 9)) * 0.45 * env;
+        break;
+      case 'stomp':
+        body.position.x = Math.sin(tt * 60) * 0.06 * env;
+        lift = Math.abs(Math.sin(tt * 12)) * 0.15 * env;
+        break;
+      case 'sulk':
+        body.rotation.x += 0.4 * env;
+        body.scale.y *= 1 - 0.1 * env;
+        break;
+      case 'shrug':
+        body.rotation.z += Math.sin(tt * 4) * 0.2 * env;
+        break;
+      default:
+        break;
+    }
+    body.position.y = this.bodyY + lift;
+    if (k >= 1) body.position.x = 0;
+  }
+
   // 走路：左右脚交替迈步、手反向摆；被撞 / 掉下去时手脚乱挥；赢了举手欢呼
   animateLimbs(dt, t, s) {
     const mv = s.frozen ? 0 : Math.min(1, s.speed || 0);
     this.walk += dt * (4 + 14 * mv);
     this.flail = Math.max(0, this.flail - dt * 2.2);
     const fl = s.frozen ? 0 : Math.min(1, this.flail + (s.falling ? 1 : 0));
-    const cheer = s.cheer && !s.frozen ? 1 : 0;
+    const taunting = this.tauntT < TAUNT_DUR && !s.frozen && !s.falling;
+    const tk = taunting ? this.tauntKind : '';
+    const tenv = taunting ? Math.sin((Math.PI * this.tauntT) / TAUNT_DUR) : 0;
+    const cheer = s.cheer && !s.frozen ? 1 : tk === 'cheer' || tk === 'laugh' ? tenv : 0;
     this.feet.forEach((f, i) => {
       const ph = this.walk + i * Math.PI;
       f.obj.position.set(
@@ -781,9 +847,17 @@ export class Character {
     });
     this.hands.forEach((h, i) => {
       const ph = this.walk + i * Math.PI + Math.PI;
-      const up = cheer * (0.85 + Math.sin(t * 14 + i * 2) * 0.12) + fl * (0.55 + Math.abs(Math.sin(t * 22 + i * 1.7)) * 0.35);
+      let up = cheer * (0.85 + Math.sin(t * 14 + i * 2) * 0.12) + fl * (0.55 + Math.abs(Math.sin(t * 22 + i * 1.7)) * 0.35);
+      let out = 0;
+      if (tk === 'wave' && i === 1) {
+        up += tenv * 0.95;
+        out = Math.sin(t * 16) * 0.2 * tenv;
+      } else if (tk === 'shrug' || tk === 'wiggle') {
+        up += tenv * 0.35;
+        out = 0.18 * tenv;
+      }
       h.obj.position.set(
-        h.base.x + h.side * (fl * 0.22 + cheer * 0.05),
+        h.base.x + h.side * (fl * 0.22 + cheer * 0.05 + out),
         h.base.y + up + Math.sin(t * 2.6 + i) * 0.03,
         h.base.z + Math.sin(ph) * 0.34 * mv * (1 - cheer)
       );

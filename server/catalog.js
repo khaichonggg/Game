@@ -2,6 +2,8 @@
 const CHARACTERS = ['bean', 'cat', 'dino', 'robot', 'penguin', 'chick', 'panda', 'bunny'];
 const SKINS = ['solid', 'stripes', 'dots', 'camo', 'rainbow', 'candy', 'gold', 'galaxy', 'lava', 'ice'];
 const HATS = ['none', 'crown', 'tophat', 'party', 'propeller', 'horns', 'halo', 'sprout', 'headphones', 'cowboy'];
+// 贴图 / 动图（客户端 public/js/stickers.js 里画出来）
+const STICKERS = ['lol', 'bleh', 'catch', 'bye', 'cry', 'mad', 'rip', 'clown', 'boom', 'wait', 'weak', 'noob', 'gg', 'six', 'oops', 'ez'];
 const COLORS = ['#ff5a5f', '#ff8c42', '#ffd23f', '#9be15d', '#3ddc84', '#2ee6d6', '#3fa7ff', '#5b6cff', '#b06cff', '#ff6fb5', '#f2f2f2', '#3a3a4a'];
 
 const pick = (arr) => arr[Math.floor(Math.random() * arr.length)];
@@ -34,4 +36,4 @@ function sanitizeName(name, fallback) {
   return n || fallback;
 }
 
-module.exports = { CHARACTERS, SKINS, HATS, COLORS, randomProfile, sanitizeProfile, sanitizeName };
+module.exports = { CHARACTERS, SKINS, HATS, COLORS, STICKERS, randomProfile, sanitizeProfile, sanitizeName };

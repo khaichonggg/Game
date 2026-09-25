@@ -1,6 +1,7 @@
 // 界面小工具：切换页面、弹窗、通知、头像等
 import { t as tr } from './i18n.js';
 import { charInfo, EMOTES } from './data.js';
+import { STICKERS, stickerSVG } from './stickers.js';
 import { sfx } from './audio.js';
 
 export const $ = (id) => document.getElementById(id);
@@ -76,34 +77,74 @@ $('modal').addEventListener('click', (e) => {
   if (e.target === $('modal') && $('modal').dataset.dismissable) closeModal();
 });
 
-// 表情选择
+// 表情选择：😀 表情 / 🖼️ 贴图 / ✨ 动图
 let emoteSend = null;
-export function initEmotes(send) {
-  emoteSend = send;
+let stickerSend = null;
+let emoteTab = 'emoji';
+try {
+  emoteTab = localStorage.getItem('bb_emote_tab') || 'emoji';
+} catch {
+  /* 无痕模式 */
+}
+function renderPicker() {
   const el = $('emotePicker');
-  el.innerHTML = EMOTES.map((e, i) => `<button data-i="${i}">${e}<small>${i + 1}</small></button>`).join('');
+  const tabs = [
+    ['emoji', tr('😀 表情')],
+    ['static', tr('🖼️ 贴图')],
+    ['anim', tr('✨ 动图')],
+  ];
+  const head = `<div class="emote-tabs">${tabs.map(([k, l]) => `<button class="tab ${emoteTab === k ? 'on' : ''}" data-tab="${k}">${l}</button>`).join('')}</div>`;
+  let body;
+  if (emoteTab === 'emoji') body = EMOTES.map((e, i) => `<button data-i="${i}">${e}<small>${i + 1}</small></button>`).join('');
+  else {
+    body = STICKERS.filter((st) => !!st.anim === (emoteTab === 'anim'))
+      .map((st) => `<button data-s="${st.id}" title="${st.name}">${stickerSVG(st.id)}</button>`)
+      .join('');
+    body += `<div class="stk-hint">${tr('按 T 快速发送上一次用的贴图')}</div>`;
+  }
+  el.classList.toggle('stickers', emoteTab !== 'emoji');
+  el.innerHTML = head + body;
+}
+export function initEmotes(send, sendSticker) {
+  emoteSend = send;
+  stickerSend = sendSticker;
+  const el = $('emotePicker');
+  renderPicker();
   el.addEventListener('click', (e) => {
     const b = e.target.closest('button');
     if (!b) return;
-    emoteSend(Number(b.dataset.i));
+    if (b.dataset.tab) {
+      emoteTab = b.dataset.tab;
+      try {
+        localStorage.setItem('bb_emote_tab', emoteTab);
+      } catch {
+        /* 无痕模式 */
+      }
+      renderPicker();
+      return;
+    }
+    if (b.dataset.s) stickerSend(b.dataset.s);
+    else emoteSend(Number(b.dataset.i));
     hideEmotes();
   });
   document.addEventListener('pointerdown', (e) => {
     if (el.classList.contains('hidden')) return;
-    if (!e.target.closest('#emotePicker, #btnEmote, #btnEmoteLobby')) hideEmotes();
+    if (!e.target.closest('#emotePicker, #btnEmote, #btnEmoteLobby, #btnEmoteRes')) hideEmotes();
   });
 }
 export function toggleEmotes(anchor) {
   const el = $('emotePicker');
   if (!el.classList.contains('hidden')) return hideEmotes();
   el.classList.remove('hidden');
-  if (anchor && current === 'lobby') {
+  if (anchor && (current === 'lobby' || current === 'results')) {
     const r = anchor.getBoundingClientRect();
-    el.style.left = Math.max(8, Math.min(window.innerWidth - 260, r.left)) + 'px';
-    el.style.top = Math.max(8, r.top - 140) + 'px';
+    renderPicker();
+    el.style.left = Math.max(8, Math.min(window.innerWidth - el.offsetWidth - 8, r.left)) + 'px';
+    el.style.top = Math.max(8, r.top - el.offsetHeight - 8) + 'px';
     el.style.right = 'auto';
     el.style.bottom = 'auto';
   } else {
+    renderPicker();
     el.style.left = el.style.top = el.style.right = el.style.bottom = '';
   }
 }
