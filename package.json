@@ -1,6 +1,6 @@
 {
   "name": "bumper-balls",
-  "version": "2.3.0",
+  "version": "2.4.0",
   "description": "碰碰球大乱斗 - 轻量多人在线派对游戏",
   "main": "server.js",
   "scripts": {
@@ -26,5 +26,5 @@
     "branch": "",
     "fallbackBranch": "claude/loving-babbage-zumou8"
   },
-  "releaseNotes": "新 Logo；16 个嘲讽贴图（10 个会动），冒在头顶还会带动作和音效，按 T 一键嘲讽，机器人也会嘲讽你"
+  "releaseNotes": "角色全面重做：大眼睛、腮红、会变的表情（眨眼、开心、害怕、晕眩…），身体更圆润可爱，机器人换成发光屏幕脸"
 }
