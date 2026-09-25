@@ -1,6 +1,6 @@
 {
   "name": "bumper-balls",
-  "version": "2.5.4",
+  "version": "2.5.5",
   "description": "碰碰球大乱斗 - 轻量多人在线派对游戏",
   "main": "server.js",
   "scripts": {
@@ -26,5 +26,5 @@
     "branch": "",
     "fallbackBranch": "claude/loving-babbage-zumou8"
   },
-  "releaseNotes": "端口被 Windows 保留时自动换端口；服务器每次意外停止都会记录并自动重启"
+  "releaseNotes": "开着 VPN / 代理时也能显示正确的局域网网址；连不上的检查清单里加上 VPN 提示"
 }

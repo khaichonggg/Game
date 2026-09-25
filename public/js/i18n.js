@@ -51,6 +51,8 @@ const EN = {
   表情: 'Emotes',
   '说点什么…（回车发送）': 'Say something… (Enter to send)',
   '说点什么…': 'Say something…',
+  '<b>开着 VPN / 代理 / 加速器？</b>先关掉再重新双击 <code>start.bat</code>；一定要开的话，在代理软件里打开「绕过局域网」，并关掉 TUN 模式': '<b>VPN / proxy / game booster on?</b> Turn it off and double-click <code>start.bat</code> again. If you need it, enable "bypass LAN" in the proxy app and turn off TUN mode',
+  '<b>VPN / 代理 / 加速器：</b>你和房主的设备上都先关掉再试': '<b>VPN / proxy / game booster:</b> turn it off on both your device and the host PC, then try again',
   '❓ 为什么连不上？': '❓ Why can\'t I connect?',
   '每 4 秒会自动重试': 'Retrying automatically every 4 seconds',
   '<b>黑色窗口还开着吗？</b>关掉了就再双击 <code>start.bat</code>': '<b>Is the black window still open?</b> If you closed it, double-click <code>start.bat</code> again',

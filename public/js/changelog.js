@@ -1,6 +1,18 @@
 // 更新内容（What's New）：新版本写在最前面。设置里的「📰 更新内容」按钮会显示这里的内容
 export const CHANGELOG = [
   {
+    v: '2.5.5',
+    date: '2026-09-25',
+    zh: [
+      '🧭 开着 VPN / 代理 / 加速器（Clash 等）时，主菜单显示的是真正的 Wi-Fi 地址，不再是代理软件的虚拟地址',
+      '📡 连不上的检查清单里加上「先关掉 VPN / 代理」的提示',
+    ],
+    en: [
+      '🧭 With a VPN / proxy / game booster (e.g. Clash) running, the main menu shows your real Wi-Fi address instead of the virtual one',
+      '📡 The "cannot connect" checklist now mentions turning off VPNs and proxies',
+    ],
+  },
+  {
     v: '2.5.4',
     date: '2026-09-25',
     zh: [

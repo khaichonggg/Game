@@ -5,7 +5,7 @@ const { pathToFileURL } = require('url');
 const { spawn } = require('child_process');
 
 // 虚拟网卡（虚拟机、WSL、Docker、VPN）的地址朋友连不上，排到最后
-const VIRTUAL = /vEthernet|WSL|Hyper-V|VirtualBox|VMware|vmnet|vboxnet|docker|br-|veth|virbr|utun|tun|tap|ZeroTier|Tailscale|Loopback|Bluetooth|蓝牙/i;
+const VIRTUAL = /vEthernet|WSL|Hyper-V|VirtualBox|VMware|vmnet|vboxnet|docker|br-|veth|virbr|utun|tun|tap|ZeroTier|Tailscale|Loopback|Bluetooth|蓝牙|Clash|Mihomo|Meta|wintun|v2ray|xray|sing-?box|WireGuard|OpenVPN|Radmin|Hamachi|VPN|加速/i;
 const REAL = /^(Wi-?Fi|WLAN|Ethernet|以太网|无线|en\d|eth\d|wlan\d|wlp|enp|eno)/i;
 
 function privateScore(ip) {
@@ -34,7 +34,9 @@ function lanAddresses() {
     for (const a of list || []) {
       // Node 18.0~18.3 里 family 是数字 4
       if ((a.family === 'IPv4' || a.family === 4) && !a.internal && !a.address.startsWith('169.254.')) {
-        const score = (VIRTUAL.test(name) ? -10 : 0) + (REAL.test(name) ? 5 : 0) + privateScore(a.address);
+        // 198.18.x.x 是 Clash 等代理软件 TUN 模式的虚拟地址，朋友连不上
+        const fake = /^198\.1[89]\./.test(a.address);
+        const score = (VIRTUAL.test(name) || fake ? -10 : 0) + (REAL.test(name) ? 5 : 0) + privateScore(a.address);
         out.push({ ip: a.address, score });
       }
     }

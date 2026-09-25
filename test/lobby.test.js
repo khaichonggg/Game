@@ -214,4 +214,16 @@ console.log('局域网地址（Windows 换网络时系统调用会抛错）');
   check(!threw && Array.isArray(res) && res.join() === first.join(), '取网卡地址出错时不会抛异常，沿用上一次的地址');
 }
 
+console.log('局域网地址：VPN / 代理软件的虚拟网卡排到最后');
+{
+  const os = require('os');
+  const { lanAddresses } = require('../server/lan');
+  const orig = os.networkInterfaces;
+  const nic = (address) => [{ address, family: 'IPv4', internal: false }];
+  os.networkInterfaces = () => ({ 'Clash': nic('198.18.0.1'), 'Meta': nic('10.0.0.5'), 'WLAN': nic('192.168.1.23'), 'vEthernet (WSL)': nic('172.20.1.1') });
+  const list = lanAddresses();
+  os.networkInterfaces = orig;
+  check(list[0] === '192.168.1.23' && list.indexOf('198.18.0.1') > 0, `真实 Wi-Fi 地址排第一（${list.join(', ')}）`);
+}
+
 done();
