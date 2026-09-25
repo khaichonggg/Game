@@ -1,5 +1,10 @@
 // 渲染核心：渲染器、场景、相机、灯光、天空、液面
 import * as THREE from 'three';
+import { EffectComposer } from '../../vendor/addons/postprocessing/EffectComposer.js';
+import { RenderPass } from '../../vendor/addons/postprocessing/RenderPass.js';
+import { UnrealBloomPass } from '../../vendor/addons/postprocessing/UnrealBloomPass.js';
+import { OutputPass } from '../../vendor/addons/postprocessing/OutputPass.js';
+import { RoomEnvironment } from '../../vendor/addons/environments/RoomEnvironment.js';
 import { settings, isTouch } from '../settings.js';
 
 export const LIQUID_Y = -150;
@@ -21,6 +26,26 @@ renderer.toneMappingExposure = 1.1;
 export const scene = new THREE.Scene();
 scene.fog = new THREE.Fog('#6a2230', 1500, 4200);
 export const camera = new THREE.PerspectiveCamera(45, 1, 10, 12000);
+
+// 环境反射：让塑料、金属、冰面有高光和反光，不再是"平涂"
+{
+  const pmrem = new THREE.PMREMGenerator(renderer);
+  scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+  scene.environmentIntensity = 0.2;
+  pmrem.dispose();
+}
+
+// 后期：泛光（岩浆、火花、道具、发光皮肤会发光）
+const composer = new EffectComposer(renderer);
+composer.addPass(new RenderPass(scene, camera));
+export const bloom = new UnrealBloomPass(new THREE.Vector2(256, 256), 0.5, 0.45, 1.6);
+composer.addPass(bloom);
+composer.addPass(new OutputPass());
+let useBloom = true;
+export function render() {
+  if (useBloom) composer.render();
+  else renderer.render(scene, camera);
+}
 
 export const hemi = new THREE.HemisphereLight('#9fb0ff', '#ff6a2a', 0.9);
 scene.add(hemi);
@@ -53,6 +78,7 @@ export function applyQuality() {
     }
   }
   quality.particles = q === 'low' ? 0.4 : q === 'medium' ? 0.7 : 1;
+  useBloom = q === 'high';
   scene.traverse((o) => {
     if (o.material) (Array.isArray(o.material) ? o.material : [o.material]).forEach((m) => (m.needsUpdate = true));
   });
@@ -243,6 +269,8 @@ export function resize() {
   const w = window.innerWidth;
   const h = window.innerHeight;
   renderer.setSize(w, h, false);
+  composer.setPixelRatio(renderer.getPixelRatio());
+  composer.setSize(w, h);
   camera.aspect = w / h;
   camera.updateProjectionMatrix();
   for (const fn of resizeHooks) fn();

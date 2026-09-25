@@ -2,7 +2,7 @@
 import qrcode from 'qrcode';
 import * as world from './render/world.js';
 import { applyMap, mapDef } from './render/arena.js';
-import { applyQuality } from './render/core.js';
+import { applyQuality, bloom, scene as renderScene } from './render/core.js';
 import { sfx, unlock, applyVolumes, playMusic } from './audio.js';
 import { settings, saveSettings, profile, saveProfile, playerName, setPlayerName, token, lastRoom, isTouch } from './settings.js';
 import { CHARACTERS, SKINS, HATS, COLORS, MAPS, MODES, ITEMS, TEAM_COLORS, TEAM_NAMES, BOT_LEVELS, charInfo } from './data.js';
@@ -1285,6 +1285,7 @@ function openSettings() {
     const b = e.target.closest('[data-q]');
     if (!b) return;
     settings.quality = b.dataset.q;
+    settings.autoQuality = false; // 手动选过就不再自动调整
     q.querySelectorAll('[data-q]').forEach((x) => x.classList.toggle('on', x === b));
     saveSettings();
     applyQuality();
@@ -1439,12 +1440,35 @@ showLanHint();
   }
 }
 
+// 自动画质：比赛中持续卡顿就降一档（每次打开页面最多降两次）
+const perf = { t: 0, frames: 0, drops: 0 };
+function watchPerf(rdt) {
+  if (!settings.autoQuality || perf.drops >= 2 || current !== 'game' || document.hidden) {
+    perf.t = perf.frames = 0;
+    return;
+  }
+  perf.t += rdt;
+  perf.frames++;
+  if (perf.t < 4) return;
+  const fps = perf.frames / perf.t;
+  perf.t = perf.frames = 0;
+  const next = settings.quality === 'high' && fps < 38 ? 'medium' : settings.quality === 'medium' && fps < 26 ? 'low' : null;
+  if (!next) return;
+  perf.drops++;
+  settings.quality = next;
+  saveSettings();
+  applyQuality();
+  document.body.dataset.quality = next;
+  notice(`画面有点卡，已自动切换到「${next === 'medium' ? '中' : '低'}」画质（可在设置里改回）`);
+}
+
 let last = performance.now();
 let booted = false;
 function loop(now) {
   const rdt = Math.min(0.1, (now - last) / 1000);
   last = now;
   world.frame(rdt, now / 1000);
+  watchPerf(rdt);
   if (!booted) {
     booted = true;
     $('loading').classList.add('hidden');
@@ -1454,4 +1478,4 @@ function loop(now) {
 requestAnimationFrame(loop);
 
 // 调试 / 自动化测试用
-window.__game = { get state() { return state; }, get myId() { return myId; }, send, get screen() { return current; }, views: world.debugViews };
+window.__game = { get state() { return state; }, get myId() { return myId; }, send, get screen() { return current; }, views: world.debugViews, bloom, scene: renderScene };

@@ -1,6 +1,6 @@
 // 场地：4 张地图的主题（天空、液面、灯光、地砖配色、周边装饰）、地砖状态动画、涂色
 import * as THREE from 'three';
-import { scene, skyMat, liquidMat, liquid, hemi, sun, underLight, std, mesh, rockify, markShared, disposeGroup, TILE_H, LIQUID_Y } from './core.js';
+import { scene, skyMat, liquidMat, liquid, hemi, sun, underLight, std, mesh, rockify, markShared, disposeGroup, TILE_H, LIQUID_Y, bloom } from './core.js';
 import { splash, clearParticles, dust, sparks } from './particles.js';
 
 // 条纹贴图（拐杖糖、星球光环）
@@ -47,6 +47,7 @@ function swirlTexture(colors) {
 // 地图主题
 export const THEMES = {
   lava: {
+    dust: '#cdb48c',
     sky: ['#0d0820', '#3a1240', '#6a2230'],
     stars: 0.8,
     fog: ['#6a2230', 1500, 4200],
@@ -59,6 +60,7 @@ export const THEMES = {
     ambient: 'embers',
   },
   ice: {
+    dust: '#f0faff',
     sky: ['#2f7fcf', '#8cc8f0', '#e3f4ff'],
     stars: 0,
     fog: ['#d8eefa', 1500, 4500],
@@ -71,6 +73,7 @@ export const THEMES = {
     ambient: 'snow',
   },
   space: {
+    dust: '#aab4e8',
     sky: ['#02010a', '#0a0a2a', '#1b1245'],
     stars: 2,
     fog: ['#0d0b26', 3500, 11000],
@@ -83,6 +86,7 @@ export const THEMES = {
     ambient: 'dust',
   },
   candy: {
+    dust: '#ffd6ea',
     sky: ['#ff8cc6', '#ffc2e0', '#fff0f6'],
     stars: 0,
     fog: ['#ffe3f0', 1500, 4500],
@@ -462,6 +466,10 @@ export function applyMap(def) {
   sun.color.set(th.sun[0]);
   sun.intensity = th.sun[1];
   underLight.color.set(th.under[0]);
+  // 每张图的泛光强度 / 阈值（糖果和冰面本身很亮，泛光要收着点）
+  const bl = { lava: [0.5, 1.6], ice: [0.35, 1.9], space: [0.6, 1.3], candy: [0.3, 2.0] }[def.id] || [0.5, 1.6];
+  bloom.strength = bl[0];
+  bloom.threshold = bl[1];
   buildArena(def);
   for (const t of tiles) t.baseColor = t.mat.color.clone();
   buildDecor(def.id);

@@ -1,6 +1,6 @@
 // 游戏世界：每帧更新角色、展示台、场上物体、模式特效、事件反馈和镜头
 import * as THREE from 'three';
-import { scene, camera, renderer, textSprite, LIQUID_Y, disposeGroup } from './core.js';
+import { scene, camera, render, textSprite, LIQUID_Y, disposeGroup } from './core.js';
 import { theme, syncTiles, updateArena, ambient, setPaint, bumperHit, resetTiles } from './arena.js';
 import { sparks, dust, burst, starBurst, splash, puff, speedLines, ringWave, popText, updateEffects } from './particles.js';
 import { Character } from './character.js';
@@ -76,13 +76,32 @@ function labelText(p, s) {
   return t;
 }
 
+// 脚下的柔和接触阴影（低画质没有实时阴影时也能看出角色站在地上）
+const blobTex = (() => {
+  const c = document.createElement('canvas');
+  c.width = c.height = 64;
+  const g = c.getContext('2d');
+  const gr = g.createRadialGradient(32, 32, 0, 32, 32, 32);
+  gr.addColorStop(0, 'rgba(0,0,0,0.55)');
+  gr.addColorStop(0.6, 'rgba(0,0,0,0.25)');
+  gr.addColorStop(1, 'rgba(0,0,0,0)');
+  g.fillStyle = gr;
+  g.fillRect(0, 0, 64, 64);
+  return new THREE.CanvasTexture(c);
+})();
+const blobGeo = new THREE.PlaneGeometry(2, 2).rotateX(-Math.PI / 2);
+const blobMat = new THREE.MeshBasicMaterial({ map: blobTex, transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2 });
+
 function makeView(p, teamMode) {
   const ch = new Character(p.profile, { teamColor: teamMode ? TEAM_COLORS[p.team] : null, team: teamMode ? p.team : -1 });
   scene.add(ch.root);
-  return { ch, label: null, labelKey: '', bubble: null, bubbleT: 0, x: p.x, z: p.y, yaw: 0, scale: p.r, fy: 0, fvy: 0, splashed: false, pop: 1, hop: 0, visible: true };
+  const shadow = new THREE.Mesh(blobGeo, blobMat);
+  shadow.renderOrder = 1;
+  scene.add(shadow);
+  return { ch, shadow, label: null, labelKey: '', bubble: null, bubbleT: 0, x: p.x, z: p.y, yaw: 0, scale: p.r, fy: 0, fvy: 0, splashed: false, pop: 1, hop: 0, visible: true, dropT: 9, dropRound: -1 };
 }
 function disposeView(v) {
-  scene.remove(v.ch.root);
+  scene.remove(v.ch.root, v.shadow);
   v.ch.dispose();
   for (const s of [v.label, v.bubble]) {
     if (!s) continue;
@@ -242,6 +261,24 @@ function updatePlayers(dt, t, rdt) {
       celebrate = won ? Math.abs(Math.sin(t * 5 + idx)) * 0.7 : Math.abs(Math.sin(t * 2 + idx * 1.3)) * 0.12;
     }
 
+    // 每局开始：大家从天上掉下来
+    if (game && s.phase === 'countdown' && v.dropRound !== s.round) {
+      v.dropRound = s.round;
+      v.dropT = -idx * 0.08;
+    }
+    let dropY = 0;
+    if (game && v.dropT < 0.55) {
+      v.dropT += rdt;
+      const kd = Math.max(0, Math.min(1, v.dropT / 0.55));
+      dropY = (1 - kd * kd) * 420;
+      if (v.dropT >= 0.55) {
+        puff(tx, tz, 10);
+        v.ch.bounce(-10);
+        if (p.id === myId) addShake(5);
+        sfx.land();
+      }
+    }
+
     if (Math.hypot(tx - v.x, tz - v.z) > 150 || !v.visible) {
       v.x = tx;
       v.z = tz;
@@ -283,10 +320,16 @@ function updatePlayers(dt, t, rdt) {
     v.visible = visible;
     const root = v.ch.root;
     root.visible = visible;
-    root.position.set(v.x, ty + sc * (1 + hopY + celebrate + ghostFloat) + v.fy, v.z);
+    root.position.set(v.x, ty + sc * (1 + hopY + celebrate + ghostFloat) + v.fy + dropY, v.z);
+    const lift = root.position.y - ty - sc;
+    v.shadow.visible = visible && !(game && p.falling);
+    v.shadow.position.set(v.x, ty + 1.2, v.z);
+    v.shadow.scale.setScalar(Math.max(0.01, sc * 1.25 * Math.max(0.35, 1 - lift / 400)));
     root.scale.setScalar(Math.max(0.01, sc));
     root.rotation.y = v.yaw;
     v.ch.update(rdt, t, {
+      speed: moving,
+      cheer: celebrate > 0.2,
       lean: Math.min(0.35, speed / 900),
       frozen: game && p.fx.frozen > 0,
       slip: game && p.fx.slip > 0,
@@ -299,6 +342,12 @@ function updatePlayers(dt, t, rdt) {
       sparks.add({ x: v.x + (Math.random() - 0.5) * 10, y: sc * 0.6, z: v.z + (Math.random() - 0.5) * 10, life: 0.35, color: '#ffd23f', size: 8 });
     }
     if (game && p.fx.big > 0 && speed > 150 && Math.random() < rdt * 12) puff(v.x, v.z, 1, '#cbb893');
+    // 跑起来脚下扬尘，冲刺时拖出速度线
+    if (game && visible && !p.falling && moving > 0.6 && Math.random() < rdt * 7) puff(v.x - p.vx * 0.04, v.z - p.vy * 0.04, 1, theme.dust || '#e8dcc4', 2);
+    if (v.dashFx > 0) {
+      v.dashFx -= rdt;
+      if (visible && speed > 200) speedLines(v.x, sc, v.z, p.vx, p.vy, p.id === myId ? '#ffe066' : '#ffffff');
+    }
 
     const labelColor = teamMode ? (p.team ? '#9cc4ff' : '#ff9ca4') : p.id === myId ? '#ffe066' : '#ffffff';
     setLabel(v, labelText(p, s), labelColor);
@@ -672,7 +721,7 @@ export function playEvents(events) {
           lastPop = now;
           popText(ev.x, 70, ev.y, null, huge ? '#ff5a5f' : '#ffd23f', huge ? 34 : 26);
         }
-        if (ev.power > 650) ringWave(ev.x, ev.y, 40 + Math.min(ev.power, 1400) * 0.04, '#ffffff', 0.25, 20);
+        if ((local && ev.power > 650) || ev.power > 1000) ringWave(ev.x, ev.y, 30 + Math.min(ev.power, 1400) * 0.03, '#fff3c4', 0.22, 20);
         addShake(local ? Math.min(18, ev.power / 55) : Math.min(6, Math.max(0, ev.power - 600) / 90));
         if (local && ev.power > 650) hitStop = 0.07;
         sfx.hit(ev.power, local);
@@ -683,6 +732,7 @@ export function playEvents(events) {
         if (v) {
           puff(v.x, v.z, 6);
           v.ch.bounce(-4);
+          v.dashFx = 0.3;
         }
         if (ev.id === myId) sfx.dash();
         break;
@@ -757,6 +807,14 @@ export function playEvents(events) {
           burst(v.x, 30, v.z, '#ffffff', 16, 140, 7);
         }
         if (ev.id === myId) sfx.respawn();
+        break;
+      }
+      case 'roundEnd': {
+        const w = ev.id != null && views.get(ev.id);
+        if (w) {
+          for (const c of ['#ff5a5f', '#ffd23f', '#3ddc84', '#3fa7ff', '#b06cff']) burst(w.x, w.ch.root.position.y + 60, w.z, c, 16, 320, 9, 1.3);
+          ringWave(w.x, w.z, 160, '#ffd23f', 0.6);
+        }
         break;
       }
       case 'emote':
@@ -852,7 +910,9 @@ export function playEvents(events) {
 // ---------------------------------------------------------------------
 const camTarget = new THREE.Vector3();
 const camPos = new THREE.Vector3(0, 700, 900);
-const CAM_DIR = new THREE.Vector3(0, Math.sin(THREE.MathUtils.degToRad(52)), Math.cos(THREE.MathUtils.degToRad(52)));
+const lastFocus = new THREE.Vector3();
+let introRound = -1;
+let introT = 9;
 
 function updateCamera(dt, t, me) {
   const want = new THREE.Vector3();
@@ -882,19 +942,77 @@ function updateCamera(dt, t, me) {
     look.set(shiftX, results ? 70 : 55, -30);
     speed = 2;
   } else {
-    const tanH = Math.tan(THREE.MathUtils.degToRad(camera.fov / 2));
-    const R = camR + 40;
-    let dist = Math.max(R / (tanH * camera.aspect), R * 2.2);
-    let follow = 0.2;
-    const cap = 1300;
-    if (dist > cap) {
-      follow = Math.min(0.75, (dist - cap) / dist + 0.3);
-      dist = cap;
+    // 比赛中：低角度第三人称跟随镜头（能看出地砖厚度和角色立体感），开局有俯冲运镜，一局结束给赢家特写
+    const s = state;
+    const introDur = s.round > 1 ? 1.4 : 2.6;
+    if (s.phase === 'countdown' && s.round !== introRound) {
+      introRound = s.round;
+      introT = 0;
     }
-    if (me && me.visible && !me.p.falling) look.set(me.v.x * follow, 0, me.v.z * follow + 60);
-    else look.set(0, 0, 60);
-    want.copy(look).addScaledVector(CAM_DIR, dist);
-    speed = 4;
+    introT += dt;
+    const narrowView = camera.aspect < 1.1;
+    const tanW = Math.tan(THREE.MathUtils.degToRad(camera.fov / 2)) * camera.aspect;
+    const viewW = narrowView ? 640 : Math.min(980, Math.max(760, camR * 1.9));
+    const tanV = Math.tan(THREE.MathUtils.degToRad(camera.fov / 2));
+    // 宽度和高度都要照顾到：手机横屏很扁，按高度保证能看到前后一段距离
+    let dist = Math.max(480, 250 / tanV, Math.min(1250, viewW / 2 / tanW));
+    let pitch = narrowView ? 50 : 40;
+    let yaw = 0;
+    const focus = new THREE.Vector3();
+    const alive = me && me.visible && me.p.alive && !me.p.falling;
+    // 足球跟一点球，Boss 战跟一点 Boss
+    let bias = null;
+    for (const [, bv] of bodyViews) if (bv.kind === 'ball' || bv.kind === 'boss') bias = bv;
+    if (alive) {
+      focus.set(me.v.x + me.p.vx * 0.22, 0, me.v.z + me.p.vy * 0.22);
+      if (bias) focus.lerp(new THREE.Vector3(bias.x, 0, bias.z), s.settings.mode === 'boss' ? 0.3 : 0.35);
+      lastFocus.copy(focus);
+    } else if (me && (me.p.falling || me.p.respawn > 0)) {
+      // 掉下去 / 等复活：镜头停在原地稍微拉远，不来回甩
+      focus.copy(lastFocus).multiplyScalar(0.8);
+      dist *= 1.15;
+    } else {
+      // 观战：看场上还活着的人
+      let n = 0;
+      for (const p of s.players) {
+        const v = views.get(p.id);
+        if (v && v.visible && p.alive && !p.falling) {
+          focus.x += v.x;
+          focus.z += v.z;
+          n++;
+        }
+      }
+      if (n) focus.multiplyScalar(1 / n);
+      dist *= 1.3;
+      pitch += 6;
+    }
+    const maxR = camR * 0.7;
+    const fl = Math.hypot(focus.x, focus.z);
+    if (fl > maxR) focus.multiplyScalar(maxR / fl);
+    // 一局结束：赢家特写 + 慢慢环绕
+    if (s.phase === 'roundEnd') {
+      const w = s.winner != null ? views.get(s.winner) : null;
+      if (w && w.visible) {
+        focus.set(w.x, w.ch.root.position.y * 0.6, w.z);
+        dist = 340;
+        pitch = 22;
+        yaw = Math.sin(t * 0.5) * 0.7;
+      }
+    }
+    // 开局运镜：从高空全景俯冲到自己身后
+    if (s.phase === 'countdown' && introT < introDur) {
+      const k = THREE.MathUtils.smoothstep(introT / introDur, 0.15, 1);
+      const overDist = Math.max(dist, camR * 2.4);
+      focus.multiplyScalar(k);
+      dist = overDist + (dist - overDist) * k;
+      pitch = 64 + (pitch - 64) * k;
+      yaw = (1 - k) * (s.round > 1 ? 0.5 : 1.3);
+    }
+    const pr = THREE.MathUtils.degToRad(pitch);
+    const dir = new THREE.Vector3(Math.sin(yaw) * Math.cos(pr), Math.sin(pr), Math.cos(yaw) * Math.cos(pr));
+    look.copy(focus);
+    want.copy(focus).addScaledVector(dir, dist);
+    speed = s.phase === 'countdown' && introT < introDur ? 9 : s.phase === 'roundEnd' ? 2.5 : 4.5;
   }
   const k = 1 - Math.exp(-dt * speed);
   camPos.lerp(want, k);
@@ -937,5 +1055,5 @@ export function frame(rdt, t) {
   if (state && view === 'room') updateObjects(rdt, t);
   updateEffects(rdt);
   updateCamera(rdt, t, me);
-  renderer.render(scene, camera);
+  render();
 }

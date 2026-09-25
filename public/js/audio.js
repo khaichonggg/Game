@@ -198,6 +198,10 @@ export const sfx = {
     tone({ f: 75, f2: 30, dur: 0.5, type: 'sine', vol: 0.4 });
     noise({ dur: 0.5, vol: 0.25, type: 'lowpass', f: 500, f2: 60 });
   },
+  land: () => {
+    tone({ f: 140, f2: 60, dur: 0.12, type: 'sine', vol: 0.12 });
+    noise({ dur: 0.08, vol: 0.05, type: 'lowpass', f: 900 });
+  },
   bossTired: () => {
     tone({ f: 420, f2: 120, dur: 0.6, type: 'sawtooth', vol: 0.06, lp: 900 });
     for (let i = 0; i < 3; i++) tone({ f: 1500 + i * 300, dur: 0.08, type: 'sine', vol: 0.05, at: 0.15 + i * 0.1 });

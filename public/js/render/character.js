@@ -383,6 +383,7 @@ export class Character {
     // 各角色的特征部件
     const accentMat = std(accent, { roughness: 0.45 });
     const darkAccent = std(new THREE.Color(accent).offsetHSL(0, 0, -0.2), { roughness: 0.45 });
+    const wings = [];
     switch (char) {
       case 'cat': {
         for (const s of [-1, 1]) {
@@ -439,9 +440,7 @@ export class Character {
           fl.scale.set(0.12, 0.45, 0.28);
           fl.rotation.z = s * 0.35;
           body.add(fl);
-          const foot = mesh(sphereGeo, orange, s * 0.32, -0.95, 0.35);
-          foot.scale.set(0.22, 0.07, 0.3);
-          body.add(foot);
+          wings.push({ obj: fl, side: s, base: fl.rotation.z });
         }
         break;
       }
@@ -465,6 +464,7 @@ export class Character {
           w.scale.set(0.12, 0.38, 0.32);
           w.rotation.z = s * 0.5;
           body.add(w);
+          wings.push({ obj: w, side: s, base: w.rotation.z });
         }
         for (let k = -1; k <= 1; k++) {
           const f = mesh(new THREE.ConeGeometry(0.08, 0.3, 6), darkAccent, k * 0.12, 0.25, -1.0);
@@ -510,6 +510,37 @@ export class Character {
     }
     this.hat = makeHat(hat, accent);
     body.add(this.hat);
+
+    // 四肢：会走路的小脚 + 会摆动的小手（企鹅、小鸡用翅膀代替手）
+    const birdy = char === 'penguin' || char === 'chick';
+    const footMat = std(birdy ? '#ffa53a' : char === 'robot' ? '#4a5068' : new THREE.Color(accent).offsetHSL(0, -0.15, -0.3), {
+      roughness: 0.45,
+      metalness: char === 'robot' ? 0.6 : 0,
+    });
+    this.feet = [];
+    for (const s of [-1, 1]) {
+      const f = new THREE.Group();
+      f.position.set(s * 0.4, -0.86, 0.14);
+      const shoe = mesh(sphereGeo, footMat, 0, 0, 0.1);
+      shoe.scale.set(birdy ? 0.24 : 0.26, 0.15, birdy ? 0.36 : 0.34);
+      shoe.castShadow = true;
+      f.add(shoe);
+      body.add(f);
+      this.feet.push({ obj: f, side: s, base: f.position.clone() });
+    }
+    this.hands = [];
+    this.wings = wings;
+    if (!birdy) {
+      const gloveMat = char === 'robot' ? std('#9aa0b8', { metalness: 0.8, roughness: 0.3 }) : std('#ffffff', { roughness: 0.4 });
+      for (const s of [-1, 1]) {
+        const h = mesh(new THREE.SphereGeometry(0.2, 16, 12), gloveMat, s * 1.04, -0.18, 0.12);
+        h.castShadow = true;
+        body.add(h);
+        this.hands.push({ obj: h, side: s, base: h.position.clone() });
+      }
+    }
+    this.walk = 0;
+    this.flail = 0;
 
     // 特效外壳：受击闪白、护盾、冰块、晕眩星星
     const fx = new THREE.Group();
@@ -565,15 +596,17 @@ export class Character {
     this.tiltV.x += lz * (4 + k * 10);
     this.tiltV.y += -lx * (4 + k * 10);
     if (power > 750) this.dizzy = Math.max(this.dizzy, 0.4 + k * 0.7);
+    this.flail = Math.max(this.flail, 0.5 + k * 0.6);
   }
 
   bounce(amount) {
     this.squashV += amount;
   }
 
-  // s: { dt, t, speed, frozen, slip, ghost, shield, speedFx, falling, lean }
+  // s: { speed(0~1), frozen, slip, ghost, shield, speedFx, falling, lean, cheer }
   update(dt, t, s = {}) {
     const d = Math.min(dt, 0.05);
+    this.animateLimbs(dt, t, s);
     this.squashV += (-120 * this.squash - 9 * this.squashV) * d;
     this.squash = Math.max(-0.28, Math.min(0.28, this.squash + this.squashV * d));
     this.tiltV.x += (-90 * this.tilt.x - 8 * this.tiltV.x) * d;
@@ -630,6 +663,37 @@ export class Character {
         if (o.userData.spin) o.rotation.y += o.userData.spin * dt;
         if (o.userData.bob) o.position.y = 1.5 + Math.sin(t * 3) * 0.05;
       });
+    }
+  }
+
+  // 走路：左右脚交替迈步、手反向摆；被撞 / 掉下去时手脚乱挥；赢了举手欢呼
+  animateLimbs(dt, t, s) {
+    const mv = s.frozen ? 0 : Math.min(1, s.speed || 0);
+    this.walk += dt * (4 + 14 * mv);
+    this.flail = Math.max(0, this.flail - dt * 2.2);
+    const fl = s.frozen ? 0 : Math.min(1, this.flail + (s.falling ? 1 : 0));
+    const cheer = s.cheer && !s.frozen ? 1 : 0;
+    this.feet.forEach((f, i) => {
+      const ph = this.walk + i * Math.PI;
+      f.obj.position.set(
+        f.base.x,
+        f.base.y + Math.max(0, Math.cos(ph)) * 0.18 * mv + (fl ? Math.sin(t * 26 + i * 2) * 0.1 * fl : 0),
+        f.base.z + Math.sin(ph) * 0.32 * mv
+      );
+      f.obj.rotation.x = -Math.sin(ph) * 0.55 * mv;
+    });
+    this.hands.forEach((h, i) => {
+      const ph = this.walk + i * Math.PI + Math.PI;
+      const up = cheer * (0.85 + Math.sin(t * 14 + i * 2) * 0.12) + fl * (0.55 + Math.abs(Math.sin(t * 22 + i * 1.7)) * 0.35);
+      h.obj.position.set(
+        h.base.x + h.side * (fl * 0.22 + cheer * 0.05),
+        h.base.y + up + Math.sin(t * 2.6 + i) * 0.03,
+        h.base.z + Math.sin(ph) * 0.34 * mv * (1 - cheer)
+      );
+    });
+    for (const w of this.wings) {
+      const flap = mv * 0.5 + fl + cheer;
+      w.obj.rotation.z = w.base + w.side * flap * (0.4 + Math.sin(t * (flap > 0.3 ? 20 : 3)) * 0.35);
     }
   }
 

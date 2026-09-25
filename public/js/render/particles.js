@@ -137,7 +137,8 @@ export function ringWave(x, z, r, color = '#ffb347', dur = 0.45, y = 3) {
 const pops = [];
 const WORDS = ['砰!', '咚!', '啪!', '嘭!', 'POW!', 'BAM!'];
 export function popText(x, y, z, text, color = '#ffd23f', size = 26) {
-  const s = textSprite(text || WORDS[Math.floor(Math.random() * WORDS.length)], { color, size: 64, stroke: '#2a1640', height: size });
+  // 镜头拉近后字会显得很大，整体缩小一些
+  const s = textSprite(text || WORDS[Math.floor(Math.random() * WORDS.length)], { color, size: 64, stroke: '#2a1640', height: size * 0.62 });
   s.position.set(x, y, z);
   s.material.rotation = (Math.random() - 0.5) * 0.5;
   scene.add(s);

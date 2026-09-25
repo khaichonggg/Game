@@ -53,6 +53,14 @@ canvas#game {
   display: none !important;
 }
 
+/* 暗角：让画面更有电影感，视线集中在中间 */
+#vignette {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(ellipse at 50% 55%, rgba(0, 0, 0, 0) 55%, rgba(8, 4, 24, 0.45) 100%);
+}
+
 input {
   font-family: var(--font);
   user-select: text;
