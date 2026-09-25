@@ -65,7 +65,7 @@ function onDisconnect() {
   const wasJoining = joining && !inRoom;
   inRoom = false;
   joining = false;
-  if (leaving) return;
+  if (leaving || serverRestarting) return;
   if (roomCode) {
     // 意外断线：自动重连回原来的房间（服务器会保留你的位置一段时间）
     if (retry === 0) notice('连接断开，正在重连…', true);
@@ -146,6 +146,9 @@ function onMessage(m) {
       break;
     case 'pong':
       ping = Math.round(performance.now() - m.c);
+      break;
+    case 'server':
+      if (m.kind === 'restart') waitForRestart(m.to);
       break;
   }
 }
@@ -1053,6 +1056,7 @@ $('menuProfile').onclick = () => openWardrobe();
 $('btnBoard').onclick = () => openBoard();
 $('btnHelp').onclick = () => openHelp();
 $('btnSettings').onclick = () => openSettings();
+$('btnUpdate').onclick = () => openUpdate();
 
 async function showLanHint() {
   const inf = await getInfo();
@@ -1368,6 +1372,14 @@ function openSettings() {
   hint.className = 'hint';
   hint.textContent = '画面卡顿时把画质调到「中」或「低」。';
   box.appendChild(hint);
+  const ver = document.createElement('div');
+  ver.className = 'range-row';
+  ver.innerHTML = `<span>ℹ️ 版本</span><span style="flex:1">v${esc((info && info.version) || '')}</span><button class="btn btn-mini btn-green">🔄 检查更新</button>`;
+  ver.querySelector('button').onclick = () => {
+    closeModal(true);
+    openUpdate(true);
+  };
+  box.appendChild(ver);
   const actions = [{ label: '完成', cls: 'btn-yellow' }];
   if (document.fullscreenEnabled) {
     actions.unshift({
@@ -1394,6 +1406,82 @@ function openPause() {
   modal({ title: '暂停菜单', body: `<p class="hint">房间 <b>${esc(roomCode)}</b> · 延迟 ${ping}ms<br>（联机游戏不会真的暂停哦）</p>`, actions });
 }
 $('btnPause').onclick = openPause;
+
+// ---------------------------------------------------------------------
+// 自动更新：GitHub 上有新版本时，在开服的电脑上点一下就能更新并自动重启
+// ---------------------------------------------------------------------
+let serverRestarting = false;
+let updInfo = null;
+async function checkUpdate(force = false) {
+  try {
+    updInfo = await fetch('/api/update' + (force ? '?force=1' : '')).then((r) => r.json());
+  } catch {
+    updInfo = null;
+  }
+  const show = !!(updInfo && updInfo.ok && updInfo.hasUpdate);
+  $('btnUpdate').classList.toggle('hidden', !show);
+  if (show) $('updVer').textContent = 'v' + updInfo.latest;
+  return updInfo;
+}
+async function openUpdate(force = false) {
+  modal({ title: '🔄 检查更新', body: '<div class="spinner"></div><p class="hint">正在连接 GitHub…</p>', actions: [{ label: '取消' }] });
+  const u = await checkUpdate(force);
+  if (!u || !u.ok) {
+    modal({ title: '检查更新失败', body: `<p>${esc((u && u.error) || '连不上服务器')}</p><p class="hint">需要能访问 GitHub（github.com）。如果你平时要开代理，请在运行游戏前设置 HTTPS_PROXY 环境变量。</p>` });
+    return;
+  }
+  if (!u.hasUpdate) {
+    modal({ title: '已经是最新版本 ✔', body: `<div class="upd-versions">v${esc(u.current)}</div><p class="hint">来源：github.com/${esc(u.repo)}（${esc(u.branch)} 分支）</p>` });
+    return;
+  }
+  const warn = u.busyGames ? `<p style="color:#ffb347">⚠️ 现在有 ${u.busyGames} 个房间正在比赛，更新时所有人会断开几秒钟。</p>` : '';
+  const where = u.canUpdate ? '' : '<p style="color:#ffb347">只能在开服的那台电脑上更新：在那台电脑的浏览器里打开 <b>http://localhost:' + esc(location.port || '3000') + '</b> 再点更新。</p>';
+  const restart = u.canUpdate && !u.canRestart ? '<p class="hint">你是用 node server.js 启动的，更新完需要手动重新运行 npm start。</p>' : '';
+  modal({
+    title: '🆕 发现新版本',
+    body: `<div class="upd-versions"><span>v${esc(u.current)}</span>→<span class="new">v${esc(u.latest)}</span></div>${u.notes ? `<div class="upd-note">${esc(u.notes)}</div>` : ''}${warn}${where}${restart}<p class="hint">排行榜等数据会保留。</p>`,
+    actions: u.canUpdate ? [{ label: '⬇️ 立即更新', cls: 'btn-green', onClick: doUpdate }, { label: '以后再说' }] : [{ label: '知道了' }],
+  });
+}
+async function doUpdate() {
+  modal({ title: '正在更新…', body: '<div class="spinner"></div><p>正在下载并安装新版本，请不要关闭开服的窗口</p>', actions: [], dismissable: false });
+  let r;
+  try {
+    r = await fetch('/api/update', { method: 'POST', headers: { 'x-bb-update': '1' } }).then((x) => x.json());
+  } catch (e) {
+    r = { ok: false, error: e.message };
+  }
+  if (!r.ok) {
+    modal({ title: '更新失败', body: `<p>${esc(r.error || '未知错误')}</p>` });
+    return;
+  }
+  if (r.restarting) waitForRestart(r.to);
+  else modal({ title: '更新完成 ✔', body: `<p>已更新到 v${esc(r.to)}。</p><p>请关闭开服的窗口，重新运行 <b>npm start</b>。</p>` });
+}
+// 服务器重启期间：等它回来，版本号变了就刷新页面
+function waitForRestart(to) {
+  serverRestarting = true;
+  modal({ title: '服务器正在更新', body: `<div class="spinner"></div><p>正在更新到 v${esc(to)}，完成后会自动刷新页面…</p>`, actions: [], dismissable: false });
+  const t0 = Date.now();
+  const poll = async () => {
+    try {
+      const inf = await fetch('/api/info', { cache: 'no-store' }).then((x) => x.json());
+      if (inf.version === to) {
+        location.reload();
+        return;
+      }
+    } catch {
+      /* 还在重启 */
+    }
+    if (Date.now() - t0 > 90000) {
+      serverRestarting = false;
+      modal({ title: '更新好像卡住了', body: '<p>请看一下开服电脑上的窗口有没有报错，然后手动重新运行 npm start。</p>' });
+      return;
+    }
+    setTimeout(poll, 1200);
+  };
+  setTimeout(poll, 1500);
+}
 
 // ---------------------------------------------------------------------
 // 键盘快捷键
@@ -1469,6 +1557,7 @@ playMusic('menu');
 startMenuCycle();
 refreshRoomCount();
 showLanHint();
+setTimeout(() => checkUpdate(), 1500);
 
 // 邀请链接 / 刷新页面：自动进入房间
 {

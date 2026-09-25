@@ -1,11 +1,12 @@
 {
   "name": "bumper-balls",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "description": "碰碰球大乱斗 - 轻量多人在线派对游戏",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js",
-    "test": "node test/modes.test.js && node test/lobby.test.js && node test/server.test.js"
+    "start": "node launcher.js",
+    "serve": "node server.js",
+    "test": "node test/modes.test.js && node test/lobby.test.js && node test/server.test.js && node test/update.test.js"
   },
   "repository": {
     "type": "git",
@@ -22,5 +23,11 @@
   },
   "engines": {
     "node": ">=18"
-  }
+  },
+  "update": {
+    "repo": "khaichonggg/Game",
+    "branch": "",
+    "fallbackBranch": "claude/loving-babbage-zumou8"
+  },
+  "releaseNotes": "绳索闯关协作模式、中英双语、第一人称视角、角色和场景建模升级、游戏内一键更新"
 }

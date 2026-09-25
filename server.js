@@ -8,10 +8,13 @@ const { Room } = require('./server/room');
 const { MAPS } = require('./server/maps');
 const K = require('./server/constants');
 const leaderboard = require('./server/leaderboard');
+const updater = require('./server/updater');
 
 const PORT = Number(process.env.PORT) || 3000;
 const PUBLIC_DIR = path.join(__dirname, 'public');
 const VERSION = require('./package.json').version;
+const UNDER_LAUNCHER = !!process.env.BB_LAUNCHER;
+const RESTART_CODE = 75;
 
 const MIME = {
   '.html': 'text/html; charset=utf-8',
@@ -58,7 +61,8 @@ const server = http.createServer((req, res) => {
     res.writeHead(400).end();
     return;
   }
-  if (urlPath === '/api/info') return json(res, { version: VERSION, port: PORT, lan: lanAddresses() });
+  if (urlPath === '/api/info') return json(res, { version: VERSION, port: PORT, lan: lanAddresses(), launcher: UNDER_LAUNCHER });
+  if (urlPath === '/api/update') return handleUpdate(req, res);
   if (urlPath === '/api/rooms') return json(res, publicRooms());
   if (urlPath === '/api/leaderboard') return json(res, leaderboard.top(30));
   if (urlPath.startsWith('/api/map/')) {
@@ -82,6 +86,41 @@ const server = http.createServer((req, res) => {
     res.end(data);
   });
 });
+
+// 只有开服的这台电脑自己才能点更新（局域网里的朋友不能远程重启你的服务器）
+function isLocal(req) {
+  const a = req.socket.remoteAddress || '';
+  return a === '127.0.0.1' || a === '::1' || a === '::ffff:127.0.0.1';
+}
+const busyGames = () => [...rooms.values()].filter((r) => !r.closed && r.inGame && r.humans().some((p) => p.connected)).length;
+
+async function handleUpdate(req, res) {
+  const local = isLocal(req);
+  if (req.method === 'GET') {
+    const force = /[?&]force=1/.test(req.url);
+    const info = await updater.check(force);
+    return json(res, { ...info, canUpdate: local, canRestart: UNDER_LAUNCHER, busyGames: busyGames() });
+  }
+  if (req.method !== 'POST') return json(res, { error: 'method' }, 405);
+  // 自定义请求头：挡住其他网页偷偷发来的跨站请求
+  if (!local || req.headers['x-bb-update'] !== '1') return json(res, { ok: false, error: '只能在开服的电脑上更新' }, 403);
+  try {
+    const r = await updater.apply((msg) => console.log('[更新]', msg));
+    json(res, { ...r, restarting: UNDER_LAUNCHER });
+    if (UNDER_LAUNCHER) {
+      // 通知所有玩家，然后退出让启动器重启
+      const note = JSON.stringify({ t: 'server', kind: 'restart', to: r.to });
+      for (const room of rooms.values()) {
+        room.sys(`服务器正在更新到 v${r.to}，马上回来…`);
+        room.broadcast(room.snapshot());
+        room.broadcast(note);
+      }
+      setTimeout(() => process.exit(RESTART_CODE), 1200);
+    }
+  } catch (e) {
+    json(res, { ok: false, error: e.message }, 500);
+  }
+}
 
 function makeRoomCode() {
   const letters = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
@@ -189,7 +228,7 @@ setInterval(() => {
 }, 1000 / K.TICK_RATE);
 
 server.listen(PORT, () => {
-  console.log(`碰碰球大乱斗 已启动：http://localhost:${PORT}`);
+  console.log(`碰碰球大乱斗 v${VERSION} 已启动：http://localhost:${PORT}`);
   for (const ip of lanAddresses()) console.log(`  局域网内的朋友可以访问：http://${ip}:${PORT}`);
 });
 
