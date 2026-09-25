@@ -1,6 +1,6 @@
 {
   "name": "bumper-balls",
-  "version": "2.5.0",
+  "version": "2.5.1",
   "description": "碰碰球大乱斗 - 轻量多人在线派对游戏",
   "main": "server.js",
   "scripts": {
@@ -26,5 +26,5 @@
     "branch": "",
     "fallbackBranch": "claude/loving-babbage-zumou8"
   },
-  "releaseNotes": "道具栏（按 F 想什么时候用就什么时候用）、场景地图更可爱、第一人称拖动转向、主菜单一键复制局域网网址、「✔ 已准备」、修复穿模、设置里新增更新内容"
+  "releaseNotes": "换了 Wi-Fi 以后，主菜单顶部的局域网网址会自动更新，不用重启"
 }

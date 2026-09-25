@@ -1069,8 +1069,16 @@ const stickerName = (id) => (STICKER_MAP[id] ? STICKER_MAP[id].name : '');
 initEmotes((i) => send({ t: 'emote', i }), sendSticker);
 
 // 邀请
+// 局域网地址会变（换了 Wi-Fi / 网线），所以几秒没问就重新问一次服务器
+let infoAt = 0;
 async function getInfo() {
-  if (!info) info = await fetch('/api/info').then((r) => r.json()).catch(() => ({ lan: [], port: location.port }));
+  if (!info || Date.now() - infoAt > 5000) {
+    const fresh = await fetch('/api/info').then((r) => r.json()).catch(() => null);
+    if (fresh) {
+      info = fresh;
+      infoAt = Date.now();
+    } else if (!info) info = { lan: [], port: location.port };
+  }
   return info;
 }
 const isLocalHost = (h) => h === 'localhost' || h === '127.0.0.1' || h === '::1' || h === '[::1]';
@@ -1277,6 +1285,9 @@ onLangChange(() => {
 });
 $('btnUpdate').onclick = () => openUpdate();
 
+// 换网络后主菜单顶部的网址自动更新
+setInterval(() => current === 'menu' && document.visibilityState === 'visible' && showLanHint(), 15000);
+window.addEventListener('online', () => setTimeout(showLanHint, 1500));
 async function showLanHint() {
   const inf = await getInfo();
   const el = $('lanHint');

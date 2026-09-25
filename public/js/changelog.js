@@ -1,6 +1,12 @@
 // 更新内容（What's New）：新版本写在最前面。设置里的「📰 更新内容」按钮会显示这里的内容
 export const CHANGELOG = [
   {
+    v: '2.5.1',
+    date: '2026-09-25',
+    zh: ['📶 换了 Wi-Fi / 网络以后，主菜单顶部的局域网网址和邀请二维码会自动变成新地址，不用重启游戏'],
+    en: ['📶 After switching Wi-Fi or network, the LAN address and invite QR code update automatically, no restart needed'],
+  },
+  {
     v: '2.5.0',
     date: '2026-09-25',
     zh: [
