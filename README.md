@@ -1,143 +1,192 @@
-# 碰碰球大乱斗 3D 🎱
+<div align="center">
 
-轻量的多人 3D 派对小游戏：每个人控制一个圆滚滚的小角色，在会塌、会滑、会下陨石的浮空场地上互相冲撞，把别人撞下去！
+<img src="docs/banner.jpg" alt="Bumper Brawl" width="100%">
 
-- 浏览器打开就能玩，电脑和手机都支持，**同一个 Wi-Fi 下扫码就能进房**
-- 房主开房 / 房间码 / 邀请链接 / 局域网房间列表，最多 8 人同房，人不够可以加机器人
-- 6 种玩法完全不同的模式（含 1~8 人合作打 Boss）× 4 张地图 × 8 种道具
-- 8 种角色 × 10 种皮肤 × 12 种颜色 × 10 顶帽子，自由搭配
-- 受击硬直、击退倾斜、眩晕星星、漫画字、屏幕震动、冲击波等打击感反馈，全部音效和背景音乐实时合成
-- 排行榜自动记录每位真人玩家的夺冠次数、击飞数和场次
-- Three.js 3D 画面，所有模型、贴图、音效都由代码生成，不需要任何素材文件
+# 🎱 Bumper Brawl
 
-## 快速开始
+**A chaotic 3D party game for 1–8 friends, right in your browser.**
+Bump, dash and shove your friends off crumbling floating arenas — or rope up and escape together.
 
-需要 [Node.js](https://nodejs.org/) 18 或更新版本。
+[![Node.js](https://img.shields.io/badge/node-%3E%3D18-3c873a?logo=node.js&logoColor=white)](https://nodejs.org/)
+[![Three.js](https://img.shields.io/badge/three.js-r186-000?logo=three.js)](https://threejs.org/)
+[![Players](https://img.shields.io/badge/players-1--8-ff5a5f)](#-game-modes)
+[![LAN](https://img.shields.io/badge/LAN-scan%20to%20join-3fa7ff)](#-play-with-friends-lan)
+[![Language](https://img.shields.io/badge/lang-English%20%7C%20中文-b06cff)](README.zh-CN.md)
+[![No assets](https://img.shields.io/badge/assets-100%25%20procedural-ffd23f)](#-tech)
+
+**English** · [简体中文](README.zh-CN.md)
+
+<img src="docs/gameplay.gif" alt="Gameplay" width="760">
+
+</div>
+
+---
+
+## ✨ Why you'll love it
+
+- 🕹️ **Zero install for players** — one computer runs the server, everyone else just opens a browser (PC, Mac, phone, tablet)
+- 📱 **Scan a QR code to join** — same Wi‑Fi, no accounts, no downloads
+- 🎮 **7 very different modes** — free‑for‑all brawls, soccer, crown grab, paint wars, hot potato, a co‑op boss fight, and a **roped‑together co‑op escape**
+- 🧸 **8 characters × 10 skins × 12 colors × 10 hats** — build your own little bumper buddy
+- 💥 **Juicy hits** — squash & stretch, knockback tilt, dizzy stars, comic "POW!" words, screen shake, hit‑stop, bloom and particles
+- 🎥 **Third person or first person** — press <kbd>V</kbd> any time
+- 🌐 **English & 中文** — switch languages live, server messages are translated per player
+- 🤖 **Smart bots** — fill empty seats with Easy / Normal / Hard bots
+- 🔄 **One‑click updates** — the game checks GitHub and updates itself from the menu
+- 🎨 **100% procedural** — every model, texture, sound effect and song is generated in code; no asset files
+
+## 📸 Screenshots
+
+<table>
+<tr>
+<td width="50%"><img src="docs/screens/classic.jpg" alt="Classic Brawl"><br><b>🥊 Classic Brawl</b> — last one standing on the Lava Isle</td>
+<td width="50%"><img src="docs/screens/rope-key.jpg" alt="Rope Escape"><br><b>🪢 Rope Escape</b> — carry the key, lower the bridge, don't let go</td>
+</tr>
+<tr>
+<td><img src="docs/screens/boss.jpg" alt="Boss Brawl"><br><b>🤖 Boss Brawl</b> — dodge the slam, then push it off together</td>
+<td><img src="docs/screens/soccer.jpg" alt="Bumper Soccer"><br><b>⚽ Bumper Soccer</b> — red vs blue with a giant beach ball</td>
+</tr>
+<tr>
+<td><img src="docs/screens/crown.jpg" alt="Crown Grab"><br><b>👑 Crown Grab</b> — hold the crown on slippery ice</td>
+<td><img src="docs/screens/paint.jpg" alt="Paint Battle"><br><b>🎨 Paint Battle</b> — claim the most tiles before time runs out</td>
+</tr>
+<tr>
+<td><img src="docs/screens/lobby.jpg" alt="Lobby"><br><b>🏠 Party lobby</b> — host controls, teams, bots, chat & emotes</td>
+<td><img src="docs/screens/invite.jpg" alt="Invite"><br><b>📨 Invite</b> — room code, QR code or LAN room list</td>
+</tr>
+<tr>
+<td><img src="docs/screens/wardrobe.jpg" alt="Wardrobe"><br><b>👕 Wardrobe</b> — characters, skins, colors and hats</td>
+<td><img src="docs/screens/results.jpg" alt="Results"><br><b>🏆 Results</b> — podium, awards and stats</td>
+</tr>
+<tr>
+<td><img src="docs/screens/potato.jpg" alt="Hot Potato"><br><b>💣 Hot Potato</b> — one second left, pass it on!</td>
+<td><img src="docs/screens/menu.jpg" alt="Title screen"><br><b>🎬 Title screen</b> — quick play, create a room or join by code</td>
+</tr>
+<tr>
+<td><img src="docs/screens/first-person.jpg" alt="First person"><br><b>👁️ First person</b> — see the chaos up close</td>
+<td><img src="docs/screens/mobile.jpg" alt="Mobile"><br><b>📱 Mobile</b> — virtual joystick and dash button</td>
+</tr>
+</table>
+
+### 🪢 Rope Escape — the co‑op highlight
+
+Everyone is tied together **1 → 2 → 3 → … → 8**. Four hand‑built stages, one rope, zero excuses.
+
+<table>
+<tr>
+<td width="33%"><img src="docs/screens/rope-key.jpg" alt="Key stage"><br><b>1 · Key Bridge</b><br>Carry the key to the lock to lower the drawbridge.</td>
+<td width="33%"><img src="docs/screens/rope-plates.jpg" alt="Twin plates"><br><b>2 · Twin Plates</b><br>Two players must hold both plates at the same time.</td>
+<td width="33%"><img src="docs/screens/rope-blink.jpg" alt="Blinking path"><br><b>3 · Blinking Path</b><br>Orange and blue tiles take turns — cross together.</td>
+</tr>
+</table>
+
+Step off an edge and a standing teammate catches you on the rope and reels you back in — but one person can only hold one teammate, so don't all jump at once. Stage 4 combines everything.
+
+## 🚀 Quick start
+
+You need [Node.js](https://nodejs.org/) 18 or newer.
 
 ```bash
-# 1. 进入游戏文件夹（先 clone 或下载解压本仓库）
+git clone https://github.com/khaichonggg/Game.git
 cd Game
-# 2. 安装依赖（只需要一次）
 npm install
-# 3. 启动服务器
 npm start
 ```
 
-启动后窗口里会显示：
+Open **http://localhost:3000** — that's it. The console also prints a LAN address for your friends:
 
 ```
-碰碰球大乱斗 已启动：http://localhost:3000
-  局域网内的朋友可以访问：http://192.168.1.23:3000
+Bumper Brawl v2.1.0 running at http://localhost:3000
+  Friends on your network can open: http://192.168.1.23:3000
 ```
 
-自己用浏览器打开 `http://localhost:3000` 即可。
+> 💡 No Git? Click **Code → Download ZIP** on GitHub, unzip, and run the same `npm install` / `npm start` inside the folder.
 
-## 和朋友联机（同一个局域网）
+## 📶 Play with friends (LAN)
 
-1. 一台电脑运行 `npm start`，这台电脑就是服务器（不要关掉窗口）。
-2. 朋友的电脑 / 手机连上**同一个 Wi-Fi**，浏览器打开启动时显示的局域网地址，例如 `http://192.168.1.23:3000`。
-3. 房主点「创建房间」→「邀请」：朋友可以**扫二维码**、输入 **4 位房间码**，或者在「局域网房间」列表里直接点加入。
-4. Windows 第一次运行时如果弹出防火墙提示，请勾选「专用网络」并点「允许访问」，否则别的设备连不进来。
+1. One computer runs `npm start` — that's the server, keep the window open.
+2. Friends join the **same Wi‑Fi** and open the LAN address shown in the console.
+3. The host clicks **Create Room → Invite**. Friends can **scan the QR code**, type the **4‑letter room code**, or pick the room from **LAN Rooms**.
+4. On Windows, allow the firewall prompt for **Private networks** the first time.
 
-想和不在身边的朋友玩，可以把项目部署到任意支持 Node + WebSocket 的平台（Render、Railway、Fly.io、自己的服务器等），启动命令 `npm start`，端口读取环境变量 `PORT`。
+Want to play over the internet? Deploy to any Node + WebSocket host (Render, Railway, Fly.io, your own VPS…) with `npm start`; the port comes from `PORT`.
 
-## 房间与组队功能
+### Party features
 
-| 功能 | 说明 |
+| | |
 | --- | --- |
-| 开房 / 房主 | 创建房间的人是房主（👑），可以改房间名、地图、模式、目标分数、人数上限（2~8）、机器人难度、道具开关、公开 / 私密 |
-| 房主转让 | 点玩家头像 →「转让房主」；房主离开或掉线时自动交给下一位 |
-| 踢人 | 房主点玩家 →「踢出房间」，被踢的人不能再进这个房间 |
-| 准备 | 成员点「准备」，房主开局时如果有人没准备会二次确认 |
-| 分队 | 足球模式自动红蓝平衡分队，成员可以自己换队，房主可以随机分队或调整任何人 |
-| 机器人 | 房主可随时加 / 减机器人，简单 / 普通 / 困难三档 |
-| 聊天 / 表情 | 大厅文字聊天，大厅和游戏里都能发 8 种表情（数字键 1~8） |
-| 快速开始 | 自动加入正在等人的公开房间，没有就新建一个 |
-| 断线重连 | 刷新页面或网络断开后自动回到原来的房间；比赛中 60 秒内回来，期间由机器人代打 |
-| 中途加入 | 比赛进行中也能进房，可复活的模式直接上场，淘汰制下一局上场 |
-| 中途结束 | 房主可以在菜单里结束当前比赛，所有人回到房间 |
+| 👑 **Host controls** | map, mode, goal, max players (2–8), bot difficulty, power‑ups, public/private, room name |
+| 🔁 **Host transfer** | hand over the crown, or it passes on automatically when the host leaves |
+| 🚪 **Kick** | kicked players can't rejoin that room |
+| ✅ **Ready check** | the host gets a confirmation if someone isn't ready |
+| 🔴🔵 **Teams** | auto‑balanced, switch sides, host can shuffle |
+| 💬 **Chat & emotes** | lobby chat, 8 emotes in the lobby and in game |
+| 🔌 **Reconnect** | refresh or drop out and you're put back in your seat; a bot covers for you in game |
+| ➕ **Join mid‑game** | respawn modes put you straight in, elimination modes next round |
 
-## 角色与皮肤
+## 🎮 Game modes
 
-点主菜单左上角的头像进入「我的角色」，可以改名字、选角色 / 皮肤 / 颜色 / 帽子，拖动可以旋转预览。
-
-- **角色**：豆豆、喵喵、小恐龙、机器人、企鹅、小鸡、熊猫、兔兔
-- **皮肤**：纯色、条纹、波点、迷彩、糖果，以及自带配色的彩虹、黄金、星空、熔岩、冰晶
-- **帽子**：皇冠、礼帽、派对帽、竹蜻蜓、小恶魔、光环、小树苗、耳机、牛仔帽
-
-## 模式
-
-| 模式 | 类型 | 规则 | 可选目标 |
-| --- | --- | --- | --- |
-| 🥊 经典乱斗 | 个人 · 淘汰 | 把所有人撞下去，每局活到最后的人得 1 分；外圈会塌，场地越打越小 | 先赢 3 / 5 / 7 局 |
-| ⚽ 碰碰足球 | 红蓝团队 | 用身体把大球撞进对方球门，掉下去 1.5 秒后在自己半场复活 | 先进 3 / 5 / 7 球 |
-| 👑 抢皇冠 | 个人 · 复活 | 戴着皇冠就计时；用力撞戴冠的人就能抢走。皇冠很沉，戴冠的人更难被撞飞 | 先拿满 20 / 30 / 45 秒 |
-| 🎨 涂色大战 | 个人 · 复活 | 走过的地砖变成你的颜色，时间到时地盘最多的人赢；炸弹一次涂一大片 | 比赛 60 / 90 / 120 秒 |
-| 💣 烫手炸弹 | 个人 · 淘汰 | 拿着炸弹的人撞到谁就传给谁，引信烧完时还拿着的人出局 | 先赢 3 / 5 / 7 局 |
-| 🤖 合力打 Boss | **多人协作 1~8 人** | 所有人一起把巨无霸推下场地！它会蓄力冲撞、跳起砸地、召唤小怪；放完大招会累趴一会儿（头顶冒星星），这时候全员冲上去推。大家共享复活次数，人越多 Boss 越重；打超过 2 分钟它会狂暴，场地也开始从外圈坍塌 | 简单 / 普通 / 困难 |
-
-## 地图
-
-| 地图 | 场地 | 机关 |
+| Mode | Type | How to win |
 | --- | --- | --- |
-| 🌋 熔岩浮岛 | 同心圆环石砖 | 外圈一层层闪红、坍塌进岩浆 |
-| 🧊 冰川碎冰 | 方形冰块 | 冰面很滑，冰块会随机碎裂沉进海里 |
-| 🪐 星际空间站 | 六边形金属板 | 陨石雨：地上出现红圈后陨石砸下，炸飞附近的人并砸穿地板 |
-| 🍭 糖果乐园 | 糖果方块棋盘 | 5 个软糖弹簧，碰到就被高高弹飞；外圈会塌 |
+| 🥊 **Classic Brawl** | Solo · elimination | Be the last one standing. The outer rings collapse, so the arena keeps shrinking. |
+| ⚽ **Bumper Soccer** | Red vs Blue | Body‑check a giant ball into the other team's goal. |
+| 👑 **Crown Grab** | Solo · respawn | Your timer runs while you wear the crown — hit the wearer hard to steal it. |
+| 🎨 **Paint Battle** | Solo · respawn | Tiles you touch take your color. Most territory at the buzzer wins. |
+| 💣 **Hot Potato** | Solo · elimination | Bump someone to pass the bomb before the fuse runs out. |
+| 🤖 **Boss Brawl** | **Co‑op 1–8** | Push the Big Boss off the arena. It charges, slams and summons minions — hit it while it's exhausted. |
+| 🪢 **Rope Escape** | **Co‑op 1–8** | The whole team is roped together 1‑2‑3… Carry the key to the lock, hold pressure plates together, cross blinking tiles, and get everyone to the exit. If you step off, a standing teammate catches you and reels you back in. |
 
-非淘汰模式（皇冠、涂色、足球、Boss）里塌掉的地砖过一会儿会重新长回来。
+### 🗺️ Maps
 
-## 道具
-
-| 道具 | 效果 |
+| Map | Twist |
 | --- | --- |
-| 🍄 巨大化 | 7 秒内体型变大、体重 ×3 |
-| ⚡ 加速 | 6 秒内跑得更快，冲刺冷却减半 |
-| 🛡️ 护盾 | 6 秒内几乎推不动，不怕冰冻 |
-| 💣 炸弹 | 立即引爆冲击波，震飞周围所有人 |
-| ❄️ 冰冻 | 把周围的对手冻成冰块 2 秒（不能动、会滑） |
-| 👻 幽灵 | 5 秒内穿过一切，谁也撞不到你 |
-| 🌪️ 龙卷风 | 放出一个到处乱跑的龙卷风，把对手卷起来甩出去 |
-| 🍌 香蕉皮 | 在身后丢 3 块香蕉皮，踩到的人会打滑转圈 |
+| 🌋 **Lava Isle** | Rings sink into the lava one by one |
+| 🧊 **Ice Floe** | Super slippery ice that cracks at random |
+| 🪐 **Space Station** | Meteor showers smash through the floor |
+| 🍭 **Candy Land** | Jelly bumpers launch you across the board |
 
-## 操作
+### ⚡ Power‑ups
 
-| 平台 | 移动 | 冲刺 | 其他 |
+🍄 Giant · ⚡ Speed · 🛡️ Shield · 💣 Bomb · ❄️ Freeze · 👻 Ghost · 🌪️ Tornado · 🍌 Banana peels
+
+## ⌨️ Controls
+
+| | Move | Dash | More |
 | --- | --- | --- | --- |
-| 电脑 | WASD / 方向键 | 空格（或 Shift / J） | 数字键 1~8 表情，Esc 菜单，大厅按回车聊天 |
-| 手机 | 左半屏拖动摇杆 | 右下角「冲刺」按钮 | 右下角按钮发表情 / 打开菜单 |
+| 🖥️ **Keyboard** | <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> / arrows | <kbd>Space</kbd> / <kbd>Shift</kbd> / <kbd>J</kbd> | <kbd>V</kbd> first person · <kbd>1</kbd>–<kbd>8</kbd> emotes · <kbd>Esc</kbd> menu · <kbd>Enter</kbd> chat |
+| 📱 **Touch** | drag the left half | big red button | drag the right half to turn in first person |
 
-设置里可以调节音乐 / 音效音量、画质（高 / 中 / 低）、屏幕震动、名字显示和全屏。
+## 🔄 Updating
 
-## 测试
+When a newer version is pushed to GitHub, a green **🆕 vX.Y.Z** badge appears on the main menu. Click it on the host computer and the game downloads the update, restarts the server and reloads everyone's page. Your leaderboard is kept. (Set `HTTPS_PROXY` if you need a proxy to reach GitHub.)
+
+## 🛠 Tech
+
+- **Server:** Node.js + [`ws`](https://github.com/websockets/ws), server‑authoritative physics at 60 Hz, snapshots at 30 Hz, pluggable mode hooks, grid‑pathfinding bots
+- **Client:** vanilla ES modules + [Three.js](https://threejs.org/) (bloom, environment reflections, instanced ropes, custom shaders for lava / sea / sky)
+- **Audio:** WebAudio‑synthesized sound effects and step‑sequenced music
+- **No build step, no asset files** — `public/` is served as‑is
+
+```
+server.js            HTTP + WebSocket entry, room list, leaderboard, update API
+launcher.js          restarts the server after an in‑game update
+server/room.js       lobby, host powers, match flow, physics
+server/modes.js      the 7 game modes
+server/levels.js     Rope Escape stages (ASCII maps)
+server/bots.js       bot AI
+server/updater.js    GitHub version check & self‑update
+public/js/           client: UI, i18n, input, audio, 3D rendering
+test/                automated tests (npm test)
+```
+
+## 🧪 Tests
 
 ```bash
 npm test
 ```
 
-- `test/modes.test.js`：每种模式 × 每张地图用 8 个机器人完整跑一遍，检查能正常结束、事件齐全，并测试 Boss 各难度
-- `test/lobby.test.js`：房主权限、转让、踢人、准备、分队、聊天、表情、改名、断线重连、中途加入、结算
-- `test/server.test.js`：启动真实服务器，用 WebSocket 测试建房、房间列表、快速开始、私密房间、重连、踢人封禁、房主转让等
+Every mode is played to the end on every map by 8 bots, plus lobby/party protocol tests, a real‑server WebSocket test, updater tests and a check that every UI string has an English translation.
 
-排行榜数据保存在 `data/leaderboard.json`，删除这个文件即可清空。
+## ⭐ Like it?
 
-## 结构
-
-```
-server.js              入口：静态文件、HTTP 接口（房间列表 / 排行榜 / 局域网地址）、WebSocket、主循环
-server/room.js         房间：玩家进出、房主权限、大厅设置、比赛流程、服务端权威物理、道具和机关
-server/modes.js        6 种模式的规则（钩子式：开局、计分、碰撞、掉落、胜负、机器人目标）
-server/bots.js         机器人 AI（找安全区、躲危险、预判滑行、冲刺安全检查）
-server/maps.js         4 张地图的地砖布局与机关参数（服务端判定和客户端建模共用）
-server/catalog.js      角色 / 皮肤 / 帽子 / 颜色目录与校验
-server/leaderboard.js  排行榜存储
-public/index.html      页面结构
-public/style.css       界面样式
-public/js/main.js      客户端入口：联网、断线重连、页面流程、大厅、HUD、结算
-public/js/ui.js        弹窗、通知、表情面板等界面工具
-public/js/input.js     键盘和手机摇杆
-public/js/audio.js     WebAudio 合成音效和背景音乐
-public/js/render/      Three.js 渲染：场景、地图主题、角色和皮肤、道具 / Boss / 球门建模、粒子特效、镜头
-public/vendor/         Three.js 和二维码生成库（单文件，无需额外安装）
-test/                  自动化测试
-```
+If this made your game night better, please give the repo a **star** — it really helps! Bug reports and ideas are welcome in [Issues](https://github.com/khaichonggg/Game/issues).

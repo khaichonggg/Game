@@ -229,7 +229,7 @@ setInterval(() => {
 }, 1000 / K.TICK_RATE);
 
 server.listen(PORT, () => {
-  console.log(`碰碰球大乱斗 v${VERSION} 已启动：http://localhost:${PORT}`);
-  for (const ip of lanAddresses()) console.log(`  局域网内的朋友可以访问：http://${ip}:${PORT}`);
+  console.log(`Bumper Brawl v${VERSION} running at http://localhost:${PORT}   (碰碰球大乱斗 已启动)`);
+  for (const ip of lanAddresses()) console.log(`  Friends on your network can open: http://${ip}:${PORT}   (局域网内的朋友可以访问)`);
 });
 

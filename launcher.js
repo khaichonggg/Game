@@ -17,10 +17,10 @@ function readState() {
 }
 
 function installDeps() {
-  console.log('\n📦 依赖有变化，正在执行 npm install …');
+  console.log('\n📦 Dependencies changed, running npm install … (依赖有变化，正在安装)');
   const npm = process.platform === 'win32' ? 'npm.cmd' : 'npm';
   const r = spawnSync(npm, ['install', '--omit=dev', '--no-audit', '--no-fund'], { cwd: __dirname, stdio: 'inherit', shell: process.platform === 'win32' });
-  if (r.status !== 0) console.log('⚠️ npm install 没有成功，如果游戏打不开，请手动运行 npm install');
+  if (r.status !== 0) console.log('⚠️ npm install failed, please run it manually (npm install 没有成功，请手动运行)');
 }
 
 function start() {
@@ -38,7 +38,7 @@ function start() {
           /* 忽略 */
         }
       }
-      console.log(`\n🔄 已更新到 v${st ? st.to : '?'}，正在重启服务器…\n`);
+      console.log(`\n🔄 Updated to v${st ? st.to : '?'}, restarting… (已更新，正在重启)\n`);
       setTimeout(start, 300);
       return;
     }
