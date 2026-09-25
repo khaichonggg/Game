@@ -6,7 +6,7 @@ const { MODES } = require('./modes');
 const bots = require('./bots');
 const catalog = require('./catalog');
 const leaderboard = require('./leaderboard');
-const { rand, lerp, clamp, r1, emptyFx, emptyStats, radiusOf, massOf, controllable, ghosted } = require('./util');
+const { rand, lerp, clamp, r1, emptyFx, emptyStats, radiusOf, massOf, controllable, ghosted, fmt } = require('./util');
 
 let nextPlayerId = 1;
 
@@ -85,11 +85,16 @@ class Room {
     const data = typeof msg === 'string' ? msg : JSON.stringify(msg);
     for (const p of this.players.values()) this.send(p, data);
   }
-  sys(text) {
-    this.chat(null, text);
+  // 系统消息：key 是中文模板，p 是参数（客户端按自己的语言翻译）
+  sys(key, p = {}) {
+    this.chat(null, fmt(key, p), key, p);
   }
-  chat(p, text) {
+  chat(p, text, key, params) {
     const msg = { type: 'chat', n: ++this.chatSeq, id: p ? p.id : 0, name: p ? p.name : '', text, sys: !p };
+    if (key) {
+      msg.key = key;
+      msg.p = params;
+    }
     this.chatLog.push(msg);
     if (this.chatLog.length > 40) this.chatLog.shift();
     this.event(msg);
@@ -145,7 +150,7 @@ class Room {
     if (!bot && this.hostId === null) this.hostId = p.id;
     // 比赛进行中加入：可复活的模式稍后直接上场，淘汰制下一局再上
     if (this.inGame && this.mode.respawn) p.respawn = 1.5;
-    this.sys(`${p.name} ${bot ? '（机器人）' : ''}加入了房间`);
+    this.sys(bot ? '{name}（机器人）加入了房间' : '{name} 加入了房间', { name: p.name });
     return p;
   }
 
@@ -156,10 +161,10 @@ class Room {
     this.players.delete(id);
     if (reason === 'kick') {
       if (p.token) this.kicked.add(p.token);
-      this.send(p, { t: 'kicked', msg: '你被房主移出了房间' });
+      this.send(p, { t: 'kicked', key: '你被房主移出了房间', msg: '你被房主移出了房间' });
     }
-    const why = { kick: '被移出了房间', timeout: '掉线了', leave: '离开了房间' }[reason] || '离开了房间';
-    this.sys(`${p.name} ${why}`);
+    const why = { kick: '{name} 被移出了房间', timeout: '{name} 掉线了', leave: '{name} 离开了房间' }[reason] || '{name} 离开了房间';
+    this.sys(why, { name: p.name });
     if (this.hostId === id) this.pickNewHost();
     if (!this.humans().length) this.closed = true;
   }
@@ -169,7 +174,7 @@ class Room {
       .filter((p) => p.connected)
       .sort((a, b) => a.id - b.id)[0];
     this.hostId = cand ? cand.id : null;
-    if (cand) this.sys(`${cand.name} 成为了新房主`);
+    if (cand) this.sys('{name} 成为了新房主', { name: cand.name });
   }
 
   disconnect(p) {
@@ -187,7 +192,7 @@ class Room {
     p.afk = false;
     p.input = { x: 0, y: 0, dash: false };
     if (this.hostId === null) this.hostId = p.id;
-    this.sys(`${p.name} 重新连接`);
+    this.sys('{name} 重新连接', { name: p.name });
   }
 
   smallerTeam() {
@@ -228,7 +233,7 @@ class Room {
         if (msg.name !== undefined) {
           const n = catalog.sanitizeName(msg.name, p.name);
           if (n !== p.name && !this.list().some((q) => q !== p && q.name === n)) {
-            this.sys(`${p.name} 改名为 ${n}`);
+            this.sys('{name} 改名为 {to}', { name: p.name, to: n });
             p.name = n;
           }
         }
@@ -277,7 +282,8 @@ class Room {
       case 'addBot':
         if (isHost && inLobby && this.players.size < this.settings.max) {
           const used = new Set(this.list().map((q) => q.name));
-          const name = K.BOT_NAMES.find((n) => !used.has('🤖' + n)) || '机器人';
+          const pool = msg.lang === 'en' ? K.BOT_NAMES_EN : K.BOT_NAMES;
+          const name = pool.find((n) => !used.has('🤖' + n)) || (msg.lang === 'en' ? 'Bot' : '机器人');
           const b = this.addPlayer({ name: '🤖' + name, profile: catalog.randomProfile(this.nextObj++), bot: true });
           b.ready = true;
         }
@@ -299,7 +305,7 @@ class Room {
         const target = this.players.get(msg.id);
         if (isHost && target && !target.bot && target.connected && target !== p) {
           this.hostId = target.id;
-          this.sys(`${p.name} 把房主转让给了 ${target.name}`);
+          this.sys('{name} 把房主转让给了 {to}', { name: p.name, to: target.name });
         }
         break;
       }
@@ -313,7 +319,7 @@ class Room {
         // 房主中途结束比赛，所有人回到房间
         if (isHost && this.inGame) {
           this.toLobby();
-          this.sys(`${p.name} 结束了这场比赛`);
+          this.sys('{name} 结束了这场比赛', { name: p.name });
         }
         break;
     }
@@ -342,7 +348,8 @@ class Room {
   tryStart(host, force) {
     const need = this.mode.minPlayers || 1;
     if (this.players.size < need) {
-      this.send(host, { t: 'error', msg: `这个模式至少需要 ${need} 名玩家（可以添加机器人）` });
+      const key = '这个模式至少需要 {n} 名玩家（可以添加机器人）';
+      this.send(host, { t: 'error', key, p: { n: need }, msg: fmt(key, { n: need }) });
       return;
     }
     const notReady = this.humans().filter((q) => q.id !== this.hostId && q.connected && !q.ready);
@@ -565,6 +572,8 @@ class Room {
     this.lastWinner = null;
     this.winnerTeam = -1;
     this.roundText = '';
+    this.roundKey = '';
+    this.roundP = {};
     this.participants = list.length;
     const order = this.mode.teams ? [...list].sort((a, b) => a.team - b.team) : list;
     const spawnR = Math.min(230, this.map.layout.radius * 0.5);
@@ -602,12 +611,14 @@ class Room {
     p.input = { x: 0, y: 0, dash: false };
   }
 
-  endRound({ winnerId = null, winnerTeam = -1, text = '' }) {
+  endRound({ winnerId = null, winnerTeam = -1, key = '', p = {} }) {
     this.phase = 'roundEnd';
     this.timer = this.mode.roundEndDelay || K.ROUND_END_DELAY;
     this.lastWinner = winnerId;
     this.winnerTeam = winnerTeam;
-    this.roundText = text;
+    this.roundText = fmt(key, p);
+    this.roundKey = key;
+    this.roundP = p;
     this.event({ type: 'roundEnd', id: winnerId, team: winnerTeam });
   }
 
@@ -636,7 +647,10 @@ class Room {
     const best = (key, icon, title, unit, min = 1, lowest = false) => {
       const vals = list.map((p) => ({ p, v: key(p) }));
       const pick = vals.sort((a, b) => (lowest ? a.v - b.v : b.v - a.v))[0];
-      if (pick && (lowest || pick.v >= min)) awards.push({ icon, title, id: pick.p.id, value: `${Math.round(pick.v * 10) / 10}${unit}` });
+      if (pick && (lowest || pick.v >= min)) {
+        const n = Math.round(pick.v * 10) / 10;
+        awards.push({ icon, title, id: pick.p.id, n, unit: unit.trim(), value: `${n}${unit}` });
+      }
     };
     best((p) => p.kills, '💥', '击飞王', ' 次');
     best((p) => p.stats.hits, '🔨', '大力士', ' 次重击', 3);
@@ -1086,6 +1100,8 @@ class Room {
       timer: r1(Math.max(0, this.timer)),
       round: this.round,
       roundText: this.roundText,
+      roundKey: this.roundKey || '',
+      roundP: this.roundP || {},
       winner: this.lastWinner,
       winnerTeam: this.winnerTeam,
       teamScore: this.teamScore,
@@ -1133,7 +1149,7 @@ class Room {
     const host = this.players.get(this.hostId);
     return {
       code: this.code,
-      name: this.settings.name || (host ? `${host.name}的房间` : '房间'),
+      name: this.settings.name, // 为空时客户端显示「XX的房间」（按玩家的语言）
       host: host ? host.name : '',
       players: this.players.size,
       humans: this.humans().length,

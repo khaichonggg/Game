@@ -1,6 +1,7 @@
 // 粒子与特效：火花、烟尘、水花、扩散光环、漫画字
 import * as THREE from 'three';
 import { scene, camera, renderer, quality, textSprite, LIQUID_Y, onResize } from './core.js';
+import { lang } from '../i18n.js';
 
 function hexRGB(hex) {
   const n = parseInt(hex.slice(1), 16);
@@ -136,10 +137,10 @@ export function ringWave(x, z, r, color = '#ffb347', dur = 0.45, y = 3) {
 
 // 漫画字："砰！" "KO!"
 const pops = [];
-const WORDS = ['砰!', '咚!', '啪!', '嘭!', 'POW!', 'BAM!'];
+const WORDS = { zh: ['砰!', '咚!', '啪!', '嘭!', 'POW!', 'BAM!'], en: ['POW!', 'BAM!', 'BONK!', 'WHAM!', 'THUD!', 'SMASH!'] };
 export function popText(x, y, z, text, color = '#ffd23f', size = 26) {
   // 镜头拉近后字会显得很大，整体缩小一些
-  const s = textSprite(text || WORDS[Math.floor(Math.random() * WORDS.length)], { color, size: 64, stroke: '#2a1640', height: size * 0.62 });
+  const s = textSprite(text || WORDS[lang][Math.floor(Math.random() * WORDS[lang].length)], { color, size: 64, stroke: '#2a1640', height: size * 0.62 });
   s.position.set(x, y, z);
   s.material.rotation = (Math.random() - 0.5) * 0.5;
   scene.add(s);

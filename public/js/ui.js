@@ -1,4 +1,5 @@
 // 界面小工具：切换页面、弹窗、通知、头像等
+import { t as tr } from './i18n.js';
 import { charInfo, EMOTES } from './data.js';
 import { sfx } from './audio.js';
 
@@ -39,7 +40,7 @@ export function notice(text, err = false) {
 
 // 弹窗：actions = [{ label, cls, onClick, keep }]
 let modalOnClose = null;
-export function modal({ title, body = '', actions = [{ label: '好的', cls: 'btn-yellow' }], onClose = null, dismissable = true }) {
+export function modal({ title, body = '', actions = [{ label: tr('好的'), cls: 'btn-yellow' }], onClose = null, dismissable = true }) {
   $('modalTitle').textContent = title;
   const b = $('modalBody');
   b.innerHTML = '';

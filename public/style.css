@@ -293,6 +293,12 @@ body:not([data-quality='high']) .modal {
   box-shadow: 0 1px 0 rgba(0, 0, 0, 0.35);
 }
 
+.icon-btn.lang-btn {
+  font-size: 15px;
+  font-weight: 900;
+  font-family: var(--font);
+}
+
 .icon-btn.small {
   width: 36px;
   height: 36px;

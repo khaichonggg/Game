@@ -1,4 +1,5 @@
 // 游戏世界：每帧更新角色、展示台、场上物体、模式特效、事件反馈和镜头
+import { t as tr } from '../i18n.js';
 import * as THREE from 'three';
 import { scene, camera, render, textSprite, LIQUID_Y, disposeGroup, resize } from './core.js';
 import { theme, syncTiles, updateArena, ambient, setPaint, bumperHit, resetTiles, updateLevel, mapDef } from './arena.js';
@@ -90,7 +91,7 @@ function labelText(p, s) {
   // 绳索闯关：名字前面标上在绳子上的顺序
   if (s.settings.mode === 'rope' && s.phase !== 'lobby') t = `${s.players.indexOf(p) + 1}. ${t}`;
   if (s.phase === 'lobby') t = (s.hostId === p.id ? '👑 ' : '') + t + (p.ready || s.hostId === p.id ? '' : ' ⌛');
-  if (!p.connected && !p.bot) t += ' (掉线)';
+  if (!p.connected && !p.bot) t += tr(' (掉线)');
   return t;
 }
 
@@ -978,7 +979,7 @@ export function playEvents(events) {
         break;
       case 'hang': {
         const v = views.get(ev.id);
-        if (v) popText(v.x, 70, v.z, '抓住了!', '#ffe066', 24);
+        if (v) popText(v.x, 70, v.z, tr('抓住了!'), '#ffe066', 24);
         sfx.rope();
         break;
       }
@@ -1062,7 +1063,7 @@ export function playEvents(events) {
         }
         break;
       case 'bossDown':
-        popText(ev.x, 120, ev.y, ev.lives > 0 ? `还剩 ${ev.lives} 条命!` : '击败!', '#ffd23f', 40);
+        popText(ev.x, 120, ev.y, ev.lives > 0 ? tr('还剩 {0} 条命!', ev.lives) : tr('击败!'), '#ffd23f', 40);
         sfx.bossDown();
         addShake(16);
         break;
@@ -1070,7 +1071,7 @@ export function playEvents(events) {
         sfx.bossRoar();
         break;
       case 'bossTired':
-        popText(ev.x, 170, ev.y, '累趴了!', '#ffe066', 30);
+        popText(ev.x, 170, ev.y, tr('累趴了!'), '#ffe066', 30);
         sfx.bossTired();
         break;
       case 'bossEnrage':

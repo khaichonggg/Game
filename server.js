@@ -6,6 +6,7 @@ const path = require('path');
 const { WebSocketServer } = require('ws');
 const { Room } = require('./server/room');
 const { MAPS } = require('./server/maps');
+const { fmt } = require('./server/util');
 const K = require('./server/constants');
 const leaderboard = require('./server/leaderboard');
 const updater = require('./server/updater');
@@ -111,7 +112,7 @@ async function handleUpdate(req, res) {
       // 通知所有玩家，然后退出让启动器重启
       const note = JSON.stringify({ t: 'server', kind: 'restart', to: r.to });
       for (const room of rooms.values()) {
-        room.sys(`服务器正在更新到 v${r.to}，马上回来…`);
+        room.sys('服务器正在更新到 v{v}，马上回来…', { v: r.to });
         room.broadcast(room.snapshot());
         room.broadcast(note);
       }
@@ -146,18 +147,18 @@ wss.on('connection', (ws) => {
 
   function enter(r, msg) {
     const token = typeof msg.token === 'string' ? msg.token.slice(0, 64) : null;
-    if (token && r.kicked.has(token)) return send({ t: 'error', msg: '你已被这个房间的房主移出' });
+    if (token && r.kicked.has(token)) return send({ t: 'error', key: '你已被这个房间的房主移出', msg: '你已被这个房间的房主移出' });
     // 断线重连：同一个身份令牌回到原来的位置
     const existing = token && r.list().find((p) => p.token === token && !p.bot);
     if (existing) {
       if (existing.ws && existing.ws !== ws && existing.ws.readyState === 1) {
-        existing.ws.send(JSON.stringify({ t: 'kicked', msg: '你在另一个页面进入了房间' }));
+        existing.ws.send(JSON.stringify({ t: 'kicked', key: '你在另一个页面进入了房间', msg: '你在另一个页面进入了房间' }));
         existing.ws.close();
       }
       r.reconnect(existing, ws);
       player = existing;
     } else {
-      if (r.players.size >= r.settings.max) return send({ t: 'error', msg: `房间已满（${r.settings.max} 人）` });
+      if (r.players.size >= r.settings.max) return send({ t: 'error', key: '房间已满（{n} 人）', p: { n: r.settings.max }, msg: fmt('房间已满（{n} 人）', { n: r.settings.max }) });
       player = r.addPlayer({ name: msg.name, profile: msg.profile, ws, token });
     }
     room = r;
@@ -187,7 +188,7 @@ wss.on('connection', (ws) => {
       const code = String(msg.room || '').toUpperCase().trim();
       if (!code) return enter(createRoom({ name: msg.roomName, public: msg.public !== false }), msg);
       const r = rooms.get(code);
-      if (!r || r.closed) return send({ t: 'error', msg: `房间不存在：${code}` });
+      if (!r || r.closed) return send({ t: 'error', key: '房间不存在：{code}', p: { code }, msg: fmt('房间不存在：{code}', { code }) });
       return enter(r, msg);
     }
     if (!room || !player) return;

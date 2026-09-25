@@ -1,3 +1,4 @@
+import { localize } from './i18n.js';
 // 显示用的数据目录（和 server/catalog.js、server/modes.js 对应）
 export const CHARACTERS = [
   { id: 'bean', name: '豆豆', icon: '🟠', desc: '经典碰碰球' },
@@ -139,3 +140,6 @@ export const MODES = {
 export const BOT_LEVELS = ['简单', '普通', '困难'];
 
 export const charInfo = (id) => CHARACTERS.find((c) => c.id === id) || CHARACTERS[0];
+
+// 名字、说明等中文字段随语言切换（见 i18n.js）
+for (const d of [CHARACTERS, SKINS, HATS, ITEMS, MAPS, MODES, TEAM_NAMES, BOT_LEVELS]) localize(d);

@@ -1,5 +1,6 @@
 // 本地保存的设置、昵称、角色外观和身份令牌
 import { CHARACTERS, SKINS, HATS, COLORS } from './data.js';
+import { lang } from './i18n.js';
 
 const load = (k, d) => {
   try {
@@ -38,7 +39,7 @@ export function saveProfile() {
   save('bb_profile', profile);
 }
 
-const NAMES = ['快乐豆', '弹弹怪', '冲冲冲', '圆滚滚', '撞墙王', '小旋风', '不倒翁', '铁头娃'];
+const NAMES = lang === 'en' ? ['Bouncy', 'Bumpy', 'Zoomer', 'Roly', 'Crasher', 'Whirly', 'Wobbly', 'Tank'] : ['快乐豆', '弹弹怪', '冲冲冲', '圆滚滚', '撞墙王', '小旋风', '不倒翁', '铁头娃'];
 export let playerName = load('bb_name', '') || NAMES[Math.floor(Math.random() * NAMES.length)] + Math.floor(Math.random() * 90 + 10);
 export function setPlayerName(n) {
   playerName = String(n || '').trim().slice(0, 12) || playerName;

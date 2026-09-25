@@ -23,4 +23,7 @@ function massOf(b) {
 const controllable = (b) => !b.fx || (b.fx.frozen <= 0 && b.fx.slip <= 0);
 const ghosted = (b) => !!b.fx && b.fx.ghost > 0;
 
-module.exports = { rand, lerp, clamp, dist, r1, emptyFx, emptyStats, radiusOf, massOf, controllable, ghosted };
+// 文字模板：'{name} 加入了房间' + { name } -> 中文文字。客户端会拿同一个模板按玩家的语言翻译
+const fmt = (key, p = {}) => String(key).replace(/\{(\w+)\}/g, (m, k) => (p[k] !== undefined ? p[k] : m));
+
+module.exports = { rand, lerp, clamp, dist, r1, emptyFx, emptyStats, radiusOf, massOf, controllable, ghosted, fmt };

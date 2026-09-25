@@ -36,7 +36,7 @@ function eliminationCheck(room) {
   if (solo ? standing.length > 0 : standing.length > 1) return;
   const winner = !solo && standing[0];
   if (winner) winner.score++;
-  room.endRound({ winnerId: winner ? winner.id : null, text: winner ? `${winner.name} 赢了这局！` : '平局！' });
+  room.endRound({ winnerId: winner ? winner.id : null, key: winner ? '{name} 赢了这局！' : '平局！', p: winner ? { name: winner.name } : {} });
 }
 const roundWinners = (room) => {
   const w = room.list().filter((p) => p.score >= room.settings.target);
@@ -404,8 +404,8 @@ const football = {
           shooter.score++;
         }
         room.event({ type: 'goal', team: scorer, id: shooter ? shooter.id : null, own: !!own, x: ball.x, y: ball.y });
-        const who = shooter ? (own ? `${shooter.name} 乌龙球！` : `${shooter.name} 进球！`) : '进球！';
-        room.endRound({ winnerTeam: scorer, text: who });
+        const key = shooter ? (own ? '{name} 乌龙球！' : '{name} 进球！') : '进球！';
+        room.endRound({ winnerTeam: scorer, key, p: shooter ? { name: shooter.name } : {} });
         return;
       }
     }
@@ -1064,7 +1064,7 @@ const rope = {
     m.inExit = need.filter(inside).length;
     if (m.inExit === need.length) {
       m.stageTimes.push(Math.round(room.matchTime - m.stageStart));
-      room.endRound({ text: `第 ${m.stage + 1} 关通过！` });
+      room.endRound({ key: '第 {n} 关通过！', p: { n: m.stage + 1 } });
       room.event({ type: 'stageClear', stage: m.stage });
     }
   },

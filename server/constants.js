@@ -29,6 +29,7 @@ module.exports = {
   EMOTE_COUNT: 8,
 
   BOT_NAMES: ['铁头', '弹弹', '旋风', '小胖', '闪电', '豆豆', '滚滚', '阿呆', '咕咕', '团子'],
+  BOT_NAMES_EN: ['Bonk', 'Boing', 'Twister', 'Chunky', 'Zap', 'Bean', 'Rolly', 'Dizzy', 'Coco', 'Mochi'],
   // 机器人难度：思考间隔、冲刺概率、瞄准误差、安全意识
   BOT_LEVELS: [
     { think: 0.28, dash: 0.25, noise: 0.8, safety: 45 },
