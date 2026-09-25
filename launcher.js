@@ -5,6 +5,15 @@ const fs = require('fs');
 const path = require('path');
 
 const RESTART_CODE = 75;
+
+// Node 太旧时给出明确提示（需要 18 或更新）
+const major = Number(process.versions.node.split('.')[0]);
+if (major < 18) {
+  console.log(`\n  Node.js ${process.versions.node} is too old. Please install Node.js 18 or newer from https://nodejs.org/`);
+  console.log(`  Node.js 版本太旧（${process.versions.node}），请到 https://nodejs.org/ 安装 18 或更新的版本。\n`);
+  process.exit(1);
+}
+let firstStart = true;
 const STATE_FILE = path.join(__dirname, 'data', 'update-state.json');
 let child = null;
 
@@ -24,7 +33,11 @@ function installDeps() {
 }
 
 function start() {
-  child = spawn(process.execPath, [path.join(__dirname, 'server.js')], { stdio: 'inherit', env: { ...process.env, BB_LAUNCHER: '1' } });
+  // 只有第一次启动时打开浏览器；更新后重启时，已打开的页面会自己刷新
+  const env = { ...process.env, BB_LAUNCHER: '1' };
+  if (!firstStart) delete env.BB_OPEN;
+  firstStart = false;
+  child = spawn(process.execPath, [path.join(__dirname, 'server.js')], { stdio: 'inherit', env });
   child.on('exit', (code, signal) => {
     child = null;
     if (code === RESTART_CODE) {

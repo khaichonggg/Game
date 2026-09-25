@@ -67,7 +67,7 @@ function proxyTunnel(target) {
   });
 }
 
-async function get(url, { json = false, redirects = 5, timeout = 20000 } = {}) {
+async function get(url, { json = false, redirects = 5, timeout = 20000, onProgress = null } = {}) {
   const u = new URL(url);
   const tunnel = await proxyTunnel(u);
   const lib = u.protocol === 'http:' ? http : https;
@@ -84,7 +84,7 @@ async function get(url, { json = false, redirects = 5, timeout = 20000 } = {}) {
     const req = lib.get(u, opts, (res) => {
       if ([301, 302, 303, 307, 308].includes(res.statusCode) && res.headers.location && redirects > 0) {
         res.resume();
-        resolve(get(new URL(res.headers.location, u).toString(), { json, redirects: redirects - 1, timeout }));
+        resolve(get(new URL(res.headers.location, u).toString(), { json, redirects: redirects - 1, timeout, onProgress }));
         return;
       }
       if (res.statusCode !== 200) {
@@ -93,7 +93,13 @@ async function get(url, { json = false, redirects = 5, timeout = 20000 } = {}) {
         return;
       }
       const chunks = [];
-      res.on('data', (c) => chunks.push(c));
+      const total = Number(res.headers['content-length']) || 0;
+      let got = 0;
+      res.on('data', (c) => {
+        chunks.push(c);
+        got += c.length;
+        if (onProgress) onProgress(got, total);
+      });
       res.on('end', () => {
         const buf = Buffer.concat(chunks);
         if (!json) return resolve(buf);
@@ -257,4 +263,4 @@ async function apply(log = () => {}) {
   }
 }
 
-module.exports = { check, apply, cmpVersion, untar, STATE_FILE };
+module.exports = { check, apply, cmpVersion, untar, get, STATE_FILE };

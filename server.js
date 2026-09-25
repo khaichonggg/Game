@@ -1,17 +1,20 @@
 // 碰碰球大乱斗 3D —— 服务器入口：静态文件 + HTTP 接口 + WebSocket + 主循环
 const http = require('http');
 const fs = require('fs');
-const os = require('os');
 const path = require('path');
-const { WebSocketServer } = require('ws');
+// ws 已经放在 server/vendor/ws 里（MIT 协议），下载下来直接 node server.js 就能跑，不需要 npm install
+const { WebSocketServer } = require('./server/vendor/ws');
 const { Room } = require('./server/room');
 const { MAPS } = require('./server/maps');
 const { fmt } = require('./server/util');
 const K = require('./server/constants');
 const leaderboard = require('./server/leaderboard');
 const updater = require('./server/updater');
+const { lanAddresses, terminalQR, openBrowser } = require('./server/lan');
+const tunnel = require('./server/tunnel');
 
-const PORT = Number(process.env.PORT) || 3000;
+const FIXED_PORT = !!process.env.PORT; // 云平台指定的端口不能换
+let PORT = Number(process.env.PORT) || 3000;
 const PUBLIC_DIR = path.join(__dirname, 'public');
 const VERSION = require('./package.json').version;
 const UNDER_LAUNCHER = !!process.env.BB_LAUNCHER;
@@ -30,17 +33,6 @@ const MIME = {
 
 const rooms = new Map();
 
-// 本机的局域网 IPv4 地址，方便同一 Wi-Fi 下的朋友加入
-function lanAddresses() {
-  const out = [];
-  for (const list of Object.values(os.networkInterfaces())) {
-    for (const a of list || []) {
-      if (a.family === 'IPv4' && !a.internal) out.push(a.address);
-    }
-  }
-  // 常见家用网段排前面
-  return out.sort((a, b) => Number(!/^192\.168\./.test(a)) - Number(!/^192\.168\./.test(b)));
-}
 
 function json(res, data, code = 200) {
   res.writeHead(code, { 'Content-Type': MIME['.json'], 'Cache-Control': 'no-store' });
@@ -64,6 +56,7 @@ const server = http.createServer((req, res) => {
   }
   if (urlPath === '/api/info') return json(res, { version: VERSION, port: PORT, lan: lanAddresses(), launcher: UNDER_LAUNCHER });
   if (urlPath === '/api/update') return handleUpdate(req, res);
+  if (urlPath === '/api/tunnel') return handleTunnel(req, res);
   if (urlPath === '/api/rooms') return json(res, publicRooms());
   if (urlPath === '/api/leaderboard') return json(res, leaderboard.top(30));
   if (urlPath.startsWith('/api/map/')) {
@@ -90,6 +83,9 @@ const server = http.createServer((req, res) => {
 
 // 只有开服的这台电脑自己才能点更新（局域网里的朋友不能远程重启你的服务器）
 function isLocal(req) {
+  // 通过外网链接（Cloudflare 隧道）进来的请求，在服务器看来也来自 127.0.0.1，要靠转发头认出来
+  const h = req.headers;
+  if (h['cf-connecting-ip'] || h['cf-ray'] || h['x-forwarded-for'] || h['x-real-ip'] || h['forwarded']) return false;
   const a = req.socket.remoteAddress || '';
   return a === '127.0.0.1' || a === '::1' || a === '::ffff:127.0.0.1';
 }
@@ -123,6 +119,22 @@ async function handleUpdate(req, res) {
   }
 }
 
+// 外网链接：谁都可以看当前链接，只有开服的电脑能开 / 关
+async function handleTunnel(req, res) {
+  const local = isLocal(req);
+  if (req.method === 'GET') return json(res, { ...tunnel.state, canControl: local, supported: !!tunnel.assetName() });
+  if (req.method !== 'POST') return json(res, { error: 'method' }, 405);
+  if (!local || req.headers['x-bb-update'] !== '1') return json(res, { ok: false, error: '只能在开服的电脑上操作' }, 403);
+  const action = /[?&]action=stop/.test(req.url) ? 'stop' : 'start';
+  if (action === 'stop') return json(res, { ...tunnel.stop(), canControl: true });
+  // 开始后立刻返回，客户端轮询 GET 查看进度
+  tunnel.start(PORT).then((st) => {
+    if (st.status === 'running') console.log(`\n  🌍 Online link / 外网链接: ${st.url}\n`);
+    else if (st.error) console.log(`\n  🌍 Online link failed / 外网链接失败: ${st.error}\n`);
+  });
+  json(res, { ...tunnel.state, canControl: true });
+}
+
 function makeRoomCode() {
   const letters = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
   let code;
@@ -139,6 +151,8 @@ function createRoom(opts) {
 }
 
 const wss = new WebSocketServer({ server, maxPayload: 16 * 1024 });
+// 监听端口的错误（比如端口被占用）在下面 server.on('error') 里处理，ws 会把同一个错误再抛一次，这里忽略
+wss.on('error', () => {});
 
 wss.on('connection', (ws) => {
   let room = null;
@@ -228,8 +242,41 @@ setInterval(() => {
   if (doSend) lastSend = now;
 }, 1000 / K.TICK_RATE);
 
-server.listen(PORT, () => {
-  console.log(`Bumper Brawl v${VERSION} running at http://localhost:${PORT}   (碰碰球大乱斗 已启动)`);
-  for (const ip of lanAddresses()) console.log(`  Friends on your network can open: http://${ip}:${PORT}   (局域网内的朋友可以访问)`);
+// 启动：端口被占用时自动试下一个（最多试 10 个）
+let tries = 0;
+server.on('error', (e) => {
+  if (e.code === 'EADDRINUSE' && !FIXED_PORT && tries < 10) {
+    console.log(`Port ${PORT} is busy, trying ${PORT + 1}…   (端口 ${PORT} 被占用，换一个)`);
+    tries++;
+    PORT++;
+    setTimeout(() => server.listen(PORT), 100);
+    return;
+  }
+  console.error(e.code === 'EADDRINUSE' ? `Port ${PORT} is already in use. (端口 ${PORT} 已被占用)` : e);
+  process.exit(1);
 });
-
+server.on('listening', async () => {
+  const lan = lanAddresses();
+  const line = '─'.repeat(64);
+  console.log(`\n${line}`);
+  console.log(`  🎱 Bumper Brawl v${VERSION} is running!   (碰碰球大乱斗 已启动)`);
+  console.log(`\n  This computer / 本机:            http://localhost:${PORT}`);
+  if (lan.length) {
+    console.log(`  Friends on the same Wi-Fi / 同一 Wi-Fi 的朋友:  http://${lan[0]}:${PORT}`);
+    for (const ip of lan.slice(1)) console.log(`     (other network / 其他网卡: http://${ip}:${PORT})`);
+    if (process.stdout.isTTY) {
+      try {
+        console.log('\n  Scan with a phone to join / 手机扫码加入:\n');
+        console.log(await terminalQR(`http://${lan[0]}:${PORT}`));
+      } catch {
+        /* 画不出二维码也没关系 */
+      }
+    }
+  } else console.log('  (No LAN address found — is this computer on Wi-Fi? / 没找到局域网地址，电脑连网了吗？)');
+  console.log('\n  Keep this window open while playing. Press Ctrl+C to stop.');
+  console.log('  玩的时候不要关掉这个窗口，按 Ctrl+C 停止。');
+  if (process.platform === 'win32') console.log('  Windows: if a firewall prompt appears, allow "Private networks". / 弹出防火墙提示时请点「允许访问」。');
+  console.log(line + '\n');
+  if (process.env.BB_OPEN === '1') openBrowser(`http://localhost:${PORT}`);
+});
+server.listen(PORT);

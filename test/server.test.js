@@ -1,7 +1,7 @@
 // 联网集成测试：真实启动服务器，用 WebSocket 客户端走一遍组队流程
 const { spawn } = require('child_process');
 const path = require('path');
-const WebSocket = require('ws');
+const WebSocket = require('../server/vendor/ws'); // 自带的 ws，不需要 npm install
 const { check, done } = require('./helpers');
 
 const PORT = 3000 + Math.floor(Math.random() * 900) + 50;
@@ -35,6 +35,19 @@ const api = async (p) => (await fetch(`http://127.0.0.1:${PORT}${p}`)).json();
   try {
     const info = await api('/api/info');
     check(Array.isArray(info.lan) && info.port === PORT, `/api/info 返回局域网地址（${info.lan.join(', ') || '无网卡'}）`);
+
+    // 外网链接 / 更新接口：只有开服电脑能操作；经过 Cloudflare 隧道来的请求（带转发头）不算本机
+    const t1 = await api('/api/tunnel');
+    check(t1.status === 'idle' && t1.canControl === true, '本机可以控制外网链接');
+    const viaTunnel = { 'cf-connecting-ip': '203.0.113.9', 'x-forwarded-for': '203.0.113.9' };
+    const t2 = await (await fetch(`http://127.0.0.1:${PORT}/api/tunnel`, { headers: viaTunnel })).json();
+    check(t2.canControl === false, '通过外网链接访问的人看不到控制按钮');
+    const t3 = await fetch(`http://127.0.0.1:${PORT}/api/tunnel`, { method: 'POST', headers: { ...viaTunnel, 'x-bb-update': '1' } });
+    check(t3.status === 403, '通过外网链接的人不能开关外网链接');
+    const u1 = await fetch(`http://127.0.0.1:${PORT}/api/update`, { method: 'POST', headers: { ...viaTunnel, 'x-bb-update': '1' } });
+    check(u1.status === 403, '通过外网链接的人不能触发更新');
+    const u2 = await fetch(`http://127.0.0.1:${PORT}/api/update`, { method: 'POST' });
+    check(u2.status === 403, '没有自定义请求头的跨站请求不能触发更新');
 
     const a = await client({ room: '', name: '小明', token: 'A', profile: { char: 'cat' }, roomName: '小明的派对' });
     const code = a.last('joined').code;

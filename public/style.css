@@ -1739,6 +1739,16 @@ tr.win td {
   text-shadow: 0 4px 0 rgba(0, 0, 0, 0.35);
 }
 
+.invite-tabs {
+  justify-content: center;
+  margin: 10px auto 6px;
+  width: fit-content;
+}
+
+.invite-body {
+  min-height: 120px;
+}
+
 .link-box {
   background: rgba(0, 0, 0, 0.3);
   border-radius: 12px;
@@ -2302,4 +2312,9 @@ tr.win td {
     bottom: calc(40px + var(--safe-b));
     right: 30px;
   }
+}
+
+.invite-body .qr img {
+  width: 150px;
+  height: 150px;
 }

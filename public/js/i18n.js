@@ -323,7 +323,8 @@ const EN = {
   '<p>朋友邀请你加入房间 <b style="color:#ffd23f">{0}</b></p><p class="hint">先给自己起个名字吧（之后可以在「换装」里修改）</p>': '<p>A friend invited you to room <b style="color:#ffd23f">{0}</b></p><p class="hint">Pick a name first (you can change it later under "Outfit")</p>',
   '<small>{0}（先赢 {1} 局）</small>': '<small>{0} (first to {1})</small>',
   '<p class="hint">其他网卡地址：{0}</p>': '<p class="hint">Other network addresses: {0}</p>',
-  '找一台电脑，在游戏文件夹里运行 <span class="keys">npm install</span> 然后 <span class="keys">npm start</span>。这台电脑就是服务器，不要关掉窗口。': 'On one computer, run <span class="keys">npm install</span> then <span class="keys">npm start</span> in the game folder. That computer is the server, keep the window open.',
+  '找一台电脑，双击游戏文件夹里的 <span class="keys">start.bat</span>（苹果电脑是 start.command，也可以运行 npm start）。这台电脑就是服务器，不要关掉窗口，窗口里会显示朋友用的地址和二维码。':
+    'On one computer, double-click <span class="keys">start.bat</span> in the game folder (start.command on a Mac, or run npm start). That computer is the server; keep the window open, it shows the address and QR code for friends.',
   '<div class="upd-versions">v{0}</div><p class="hint">来源：github.com/{1}（{2} 分支）</p>': '<div class="upd-versions">v{0}</div><p class="hint">Source: github.com/{1} ({2} branch)</p>',
   '<p>{0}</p><p class="hint">需要能访问 GitHub（github.com）。如果你平时要开代理，请在运行游戏前设置 HTTPS_PROXY 环境变量。</p>': '<p>{0}</p><p class="hint">GitHub (github.com) must be reachable. If you use a proxy, set the HTTPS_PROXY environment variable before starting the game.</p>',
   '<div class="empty"><div class="big">🏝️</div>附近还没有公开房间<br><button class="btn btn-blue" data-create="1">🏠 自己开一个</button></div>': '<div class="empty"><div class="big">🏝️</div>No public rooms nearby yet<br><button class="btn btn-blue" data-create="1">🏠 Create one</button></div>',
@@ -356,6 +357,26 @@ const EN = {
   '{0} {1}　❤️ {2}': '{0} {1}  ❤️ {2}',
   '第 {0} 关 · {1}　': 'Stage {0} · {1} ',
   '🔑 {0}': '🔑 {0}',
+
+  '📶 同一 Wi-Fi': '📶 Same Wi-Fi',
+  '不在同一个 Wi-Fi？': 'Not on the same Wi-Fi?',
+  '房主在「邀请」里切到「🌍 外网链接」，点一下就能生成一个公网网址（免费，不用注册），发给任何地方的朋友都能打开。': 'The host opens "Invite", switches to "🌍 Online link" and creates a free public link (no account needed) that friends anywhere can open.',
+  '🌍 外网链接': '🌍 Online link',
+  '不在同一个 Wi-Fi 的朋友，用手机或电脑打开这个链接就能进房': 'Friends anywhere can open this link on a phone or computer to join',
+  '链接在开服窗口关掉后失效，每次生成的网址都不一样。': 'The link stops working when the host window closes; each link is different.',
+  '⏹ 关闭外网链接': '⏹ Turn off online link',
+  '第一次使用，正在下载 Cloudflare 组件… {0}%': 'First time: downloading the Cloudflare helper… {0}%',
+  '正在生成外网链接…': 'Creating your online link…',
+  '🌍 生成外网链接': '🌍 Create online link',
+  '只有开服的电脑能生成外网链接：在那台电脑上打开 http://localhost:{0} 再点「邀请」。': 'Only the host computer can create an online link: open http://localhost:{0} on that computer and press "Invite".',
+  '用 Cloudflare 免费生成一个公网网址，不在同一个 Wi-Fi 的朋友也能一起玩。不需要注册账号，第一次使用会自动下载一个小组件（约 20~40MB）。':
+    'Create a free public link with Cloudflare so friends who are not on your Wi-Fi can join. No account needed; the first time it downloads a small helper (about 20-40 MB).',
+  这个系统不支持自动生成外网链接: 'Online links are not supported on this system',
+  '等了 60 秒还没拿到网址，可能是网络连不上 Cloudflare': 'No link after 60 seconds; Cloudflare may be unreachable from this network',
+  这个系统不支持自动下载cloudflared: 'cloudflared cannot be downloaded automatically on this system',
+  '这个系统不支持自动下载 cloudflared': 'cloudflared cannot be downloaded automatically on this system',
+  '下载的 cloudflared 压缩包不完整': 'The cloudflared download is incomplete',
+  只能在开服的电脑上操作: 'Only the host computer can do this',
 
   // ---------------- 模式 / 地图 / 道具 / 角色（data.js）----------------
   经典乱斗: 'Classic Brawl',

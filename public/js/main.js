@@ -1007,34 +1007,110 @@ function lanBase(inf) {
   if (!isLocalHost(location.hostname) || !inf.lan.length) return location.origin;
   return `${location.protocol}//${inf.lan[0]}:${location.port || inf.port}`;
 }
-async function openInvite() {
+const qrDataURL = (text) => {
+  try {
+    const q = qrcode(0, 'M');
+    q.addData(text);
+    q.make();
+    return q.createDataURL(5, 2);
+  } catch {
+    return '';
+  }
+};
+const qrBlock = (text) => {
+  const src = qrDataURL(text);
+  return src ? tr('<div class="qr"><img alt="二维码" src="{0}"></div>', src) : '';
+};
+
+// 邀请：「同一 Wi-Fi」用局域网地址；「外网链接」用 Cloudflare 生成的公网网址
+let invitePoll = 0;
+async function openInvite(tab) {
   if (!roomCode) return;
   const inf = await getInfo();
-  const url = `${lanBase(inf)}/?room=${roomCode}`;
-  let qrImg = '';
-  try {
-    const qr = qrcode(0, 'M');
-    qr.addData(url);
-    qr.make();
-    qrImg = tr('<div class="qr"><img alt="二维码" src="{0}"></div>', qr.createDataURL(5, 2));
-  } catch {
-    qrImg = '';
-  }
-  const noLan = isLocalHost(location.hostname) && !inf.lan.length ? tr('<p class="hint">⚠️ 没检测到局域网地址，请确认这台电脑连着 Wi-Fi / 网线</p>') : '';
-  const more = inf.lan.length > 1 && isLocalHost(location.hostname) ? tr('<p class="hint">其他网卡地址：{0}</p>', inf.lan.slice(1).map((ip) => `${ip}:${location.port || inf.port}`).join(tr('、'))) : '';
+  const lanUrl = `${lanBase(inf)}/?room=${roomCode}`;
+  const viaTunnel = /\.trycloudflare\.com$/i.test(location.hostname);
+  let cur = tab || (viaTunnel ? 'online' : 'lan');
+  let copyUrl = lanUrl;
+  const box = document.createElement('div');
+  box.innerHTML = `<div class="big-code">${esc(roomCode)}</div><p class="hint">${tr('朋友打开游戏后，在主菜单输入房间码')}</p><div class="seg invite-tabs"><button data-tab="lan">${tr('📶 同一 Wi-Fi')}</button><button data-tab="online">${tr('🌍 外网链接')}</button></div><div class="invite-body"></div>`;
+  const body = box.querySelector('.invite-body');
+  const setTabs = () => box.querySelectorAll('.invite-tabs button').forEach((b) => b.classList.toggle('on', b.dataset.tab === cur));
+
+  const renderLan = () => {
+    copyUrl = lanUrl;
+    const noLan = isLocalHost(location.hostname) && !inf.lan.length ? tr('<p class="hint">⚠️ 没检测到局域网地址，请确认这台电脑连着 Wi-Fi / 网线</p>') : '';
+    const more = inf.lan.length > 1 && isLocalHost(location.hostname) ? tr('<p class="hint">其他网卡地址：{0}</p>', inf.lan.slice(1).map((ip) => `${ip}:${location.port || inf.port}`).join(tr('、'))) : '';
+    body.innerHTML = `${qrBlock(lanUrl)}<p class="hint">${tr('同一 Wi-Fi 下，手机扫码直接进房')}</p><div class="link-box">${esc(lanUrl)}</div>${noLan}${more}`;
+  };
+
+  const renderOnline = async () => {
+    clearTimeout(invitePoll);
+    if (cur !== 'online' || !box.isConnected) return;
+    let st = null;
+    try {
+      st = await fetch('/api/tunnel', { cache: 'no-store' }).then((r) => r.json());
+    } catch {
+      st = null;
+    }
+    if (cur !== 'online' || !box.isConnected) return;
+    copyUrl = lanUrl;
+    if (!st) {
+      body.innerHTML = `<p>${tr('连不上服务器')}</p>`;
+      return;
+    }
+    if (st.status === 'running' && st.url) {
+      const url = `${st.url}/?room=${roomCode}`;
+      copyUrl = url;
+      body.innerHTML =
+        `${qrBlock(url)}<p class="hint">${tr('不在同一个 Wi-Fi 的朋友，用手机或电脑打开这个链接就能进房')}</p><div class="link-box">${esc(url)}</div>` +
+        `<p class="hint">${tr('链接在开服窗口关掉后失效，每次生成的网址都不一样。')}</p>` +
+        (st.canControl ? `<button class="btn btn-mini btn-ghost" data-act="stop">${tr('⏹ 关闭外网链接')}</button>` : '');
+    } else if (st.status === 'downloading' || st.status === 'starting') {
+      const msg = st.status === 'downloading' ? tr('第一次使用，正在下载 Cloudflare 组件… {0}%', st.progress || 0) : tr('正在生成外网链接…');
+      body.innerHTML = `<div class="spinner"></div><p>${msg}</p>`;
+      invitePoll = setTimeout(renderOnline, 1000);
+    } else {
+      const err = st.status === 'error' && st.error ? `<p style="color:#ff8a8e">${esc(tr(st.error))}</p>` : '';
+      const how = st.canControl
+        ? `<button class="btn btn-green" data-act="start">${tr('🌍 生成外网链接')}</button>`
+        : `<p style="color:#ffb347">${tr('只有开服的电脑能生成外网链接：在那台电脑上打开 http://localhost:{0} 再点「邀请」。', esc(location.port || inf.port))}</p>`;
+      body.innerHTML = `<p class="hint" style="text-align:left">${tr('用 Cloudflare 免费生成一个公网网址，不在同一个 Wi-Fi 的朋友也能一起玩。不需要注册账号，第一次使用会自动下载一个小组件（约 20~40MB）。')}</p>${err}${st.supported === false ? `<p>${tr('这个系统不支持自动生成外网链接')}</p>` : how}`;
+    }
+  };
+
+  const render = () => {
+    setTabs();
+    if (cur === 'lan') renderLan();
+    else renderOnline();
+  };
+  box.addEventListener('click', async (e) => {
+    const t = e.target.closest('[data-tab]');
+    if (t) {
+      cur = t.dataset.tab;
+      render();
+      return;
+    }
+    const act = e.target.closest('[data-act]');
+    if (!act) return;
+    act.disabled = true;
+    await fetch('/api/tunnel' + (act.dataset.act === 'stop' ? '?action=stop' : ''), { method: 'POST', headers: { 'x-bb-update': '1' } }).catch(() => {});
+    renderOnline();
+  });
   modal({
     title: tr('📨 邀请朋友'),
-    body: `<div class="big-code">${esc(roomCode)}</div><p class="hint">${tr('朋友打开游戏后，在主菜单输入房间码')}</p>${qrImg}<p class="hint">${tr('同一 Wi-Fi 下，手机扫码直接进房')}</p><div class="link-box">${esc(url)}</div>${noLan}${more}`,
+    body: box,
+    onClose: () => clearTimeout(invitePoll),
     actions: [
       {
         label: tr('📋 复制邀请链接'),
         cls: 'btn-blue',
         keep: true,
-        onClick: async () => notice((await copyText(url)) ? tr('邀请链接已复制 ✔') : tr('复制失败，请手动复制'), false),
+        onClick: async () => notice((await copyText(copyUrl)) ? tr('邀请链接已复制 ✔') : tr('复制失败，请手动复制'), false),
       },
-      { label: tr('关闭') },
+      { label: tr('关闭'), onClick: () => clearTimeout(invitePoll) },
     ],
   });
+  render();
 }
 
 // ---------------------------------------------------------------------
@@ -1375,9 +1451,10 @@ async function renderHelp() {
     const port = location.port || inf.port;
     const addrs = inf.lan.length ? inf.lan.map((ip) => `<b style="display:inline;color:#ffd23f">http://${esc(ip)}:${esc(port)}</b>`).join('<br>') : tr('（没检测到局域网地址）');
     html = [
-      card('1️⃣', tr('开服'), tr('找一台电脑，在游戏文件夹里运行 <span class="keys">npm install</span> 然后 <span class="keys">npm start</span>。这台电脑就是服务器，不要关掉窗口。')),
+      card('1️⃣', tr('开服'), tr('找一台电脑，双击游戏文件夹里的 <span class="keys">start.bat</span>（苹果电脑是 start.command，也可以运行 npm start）。这台电脑就是服务器，不要关掉窗口，窗口里会显示朋友用的地址和二维码。')),
       card('2️⃣', tr('连同一个 Wi-Fi'), tr('朋友的电脑 / 手机连上同一个 Wi-Fi，用浏览器打开：<br>{0}', addrs)),
       card('3️⃣', tr('开房邀请'), tr('点「创建房间」当房主，再点「邀请」：朋友可以扫二维码、输入 4 位房间码，或者在「局域网房间」列表里直接加入。')),
+      card('🌍', tr('不在同一个 Wi-Fi？'), tr('房主在「邀请」里切到「🌍 外网链接」，点一下就能生成一个公网网址（免费，不用注册），发给任何地方的朋友都能打开。')),
       card('🛡️', tr('连不上？'), tr('Windows 第一次运行时会弹出防火墙提示，请勾选「专用网络」并点「允许访问」。公司 / 学校网络可能禁止设备互访。')),
       card('👑', tr('房主权限'), tr('房主可以选地图、模式、目标分数、人数上限、机器人难度、道具开关，能踢人、转让房主、分队、中途结束比赛。房主离开时自动交给下一位。')),
       card('🔒', tr('私密房间'), tr('关掉「公开房间」后，房间不会出现在列表里，只有知道房间码的人能进。')),

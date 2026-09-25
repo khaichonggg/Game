@@ -24,7 +24,8 @@ Bump, dash and shove your friends off crumbling floating arenas — or rope up a
 
 ## ✨ Why you'll love it
 
-- 🕹️ **Zero install for players** — one computer runs the server, everyone else just opens a browser (PC, Mac, phone, tablet)
+- 🕹️ **Zero install** — download, double-click `start.bat` / `start.command`, done. Everyone else just opens a browser (PC, Mac, phone, tablet)
+- 🌍 **Online link** — one click generates a public link so friends anywhere can join
 - 📱 **Scan a QR code to join** — same Wi‑Fi, no accounts, no downloads
 - 🎮 **7 very different modes** — free‑for‑all brawls, soccer, crown grab, paint wars, hot potato, a co‑op boss fight, and a **roped‑together co‑op escape**
 - 🧸 **8 characters × 10 skins × 12 colors × 10 hats** — build your own little bumper buddy
@@ -82,34 +83,54 @@ Everyone is tied together **1 → 2 → 3 → … → 8**. Four hand‑built sta
 
 Step off an edge and a standing teammate catches you on the rope and reels you back in — but one person can only hold one teammate, so don't all jump at once. Stage 4 combines everything.
 
-## 🚀 Quick start
+## 🚀 Quick start (2 minutes)
 
-You need [Node.js](https://nodejs.org/) 18 or newer.
+1. Install **[Node.js](https://nodejs.org/)** (the LTS version) — one time only.
+2. Download this repo: **Code → Download ZIP** and unzip it (or `git clone https://github.com/khaichonggg/Game.git`).
+3. Start the game:
+   - **Windows:** double-click **`start.bat`**
+   - **macOS:** double-click **`start.command`** (first time: right-click → Open)
+   - **Linux:** run **`./start.sh`**
+
+Your browser opens the game automatically. **No `npm install` needed** — everything is included.
+
+<details>
+<summary>Prefer the command line?</summary>
 
 ```bash
 git clone https://github.com/khaichonggg/Game.git
 cd Game
-npm install
-npm start
+npm start            # or: node launcher.js
 ```
 
-Open **http://localhost:3000** — that's it. The console also prints a LAN address for your friends:
+If port 3000 is busy the game picks the next free port automatically. Set `PORT=8080` to choose one, or `LAN_IP=192.168.1.5` if the console shows the wrong network address.
+</details>
+
+## 📶 Play with friends (same Wi‑Fi)
+
+When the game starts, the window shows the address for your friends **and a QR code**:
 
 ```
-Bumper Brawl v2.1.0 running at http://localhost:3000
-  Friends on your network can open: http://192.168.1.23:3000
+  🎱 Bumper Brawl v2.2.0 is running!
+
+  This computer:                   http://localhost:3000
+  Friends on the same Wi-Fi:       http://192.168.1.23:3000
+
+  Scan with a phone to join:
+  ▄▄▄▄▄▄▄ ▄ ▄▄ ▄▄▄▄▄▄▄
+  █ ▄▄▄ █ ▀█▄▀ █ ▄▄▄ █   ...
 ```
 
-> 💡 No Git? Click **Code → Download ZIP** on GitHub, unzip, and run the same `npm install` / `npm start` inside the folder.
+1. Keep that window open — this computer is the server.
+2. Friends join the **same Wi‑Fi** and scan the QR code or open the address on any phone, tablet or computer.
+3. In the game, the host clicks **Create Room → Invite** for a room QR code / 4‑letter code, or friends pick the room under **LAN Rooms**.
+4. On Windows, click **Allow** on the firewall prompt the first time (tick *Private networks*).
 
-## 📶 Play with friends (LAN)
+## 🌍 Play over the internet (online link)
 
-1. One computer runs `npm start` — that's the server, keep the window open.
-2. Friends join the **same Wi‑Fi** and open the LAN address shown in the console.
-3. The host clicks **Create Room → Invite**. Friends can **scan the QR code**, type the **4‑letter room code**, or pick the room from **LAN Rooms**.
-4. On Windows, allow the firewall prompt for **Private networks** the first time.
+Friends not on your Wi‑Fi? The host opens **Invite → 🌍 Online link → Create online link**. The game uses a free [Cloudflare Quick Tunnel](https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/do-more-with-tunnels/trycloudflare/) to create a public `https://….trycloudflare.com` address with a QR code — **no account, no router setup**. The first time it downloads the small `cloudflared` helper automatically. The link works until you close the game window.
 
-Want to play over the internet? Deploy to any Node + WebSocket host (Render, Railway, Fly.io, your own VPS…) with `npm start`; the port comes from `PORT`.
+For a permanent address you can also deploy to any Node + WebSocket host (Render, Railway, Fly.io, a VPS…) with `npm start`; the port comes from `PORT`.
 
 ### Party features
 
@@ -122,6 +143,7 @@ Want to play over the internet? Deploy to any Node + WebSocket host (Render, Rai
 | 🔴🔵 **Teams** | auto‑balanced, switch sides, host can shuffle |
 | 💬 **Chat & emotes** | lobby chat, 8 emotes in the lobby and in game |
 | 🔌 **Reconnect** | refresh or drop out and you're put back in your seat; a bot covers for you in game |
+| 🌍 **Online link** | one click creates a public link + QR code for friends anywhere |
 | ➕ **Join mid‑game** | respawn modes put you straight in, elimination modes next round |
 
 ## 🎮 Game modes
@@ -175,6 +197,10 @@ server/modes.js      the 7 game modes
 server/levels.js     Rope Escape stages (ASCII maps)
 server/bots.js       bot AI
 server/updater.js    GitHub version check & self‑update
+server/tunnel.js     online link (Cloudflare quick tunnel)
+server/lan.js        LAN address detection & console QR code
+server/vendor/ws/    bundled WebSocket library (MIT) — no npm install needed
+start.bat / start.command / start.sh   double-click launchers
 public/js/           client: UI, i18n, input, audio, 3D rendering
 test/                automated tests (npm test)
 ```

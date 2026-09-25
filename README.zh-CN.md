@@ -17,7 +17,8 @@
 
 ## ✨ 特色
 
-- 🕹️ **玩家不用安装**：一台电脑开服，其他人用浏览器打开就能玩（电脑、手机、平板都行）
+- 🕹️ **免安装**：下载后双击 `start.bat` / `start.command` 就能开服，其他人用浏览器打开就能玩（电脑、手机、平板都行）
+- 🌍 **外网链接**：一键生成公网网址，不在同一个 Wi-Fi 的朋友也能加入
 - 📱 **扫码进房**：同一个 Wi-Fi 下扫二维码直接加入，不用注册
 - 🎮 **7 种玩法完全不同的模式**：乱斗、足球、抢皇冠、涂色、烫手炸弹、合力打 Boss，以及**绳索串联的协作闯关**
 - 🧸 **8 种角色 × 10 种皮肤 × 12 种颜色 × 10 顶帽子**
@@ -59,29 +60,43 @@
 
 （截图是英文界面，游戏里可以随时切换成中文。）
 
-## 🚀 快速开始
+## 🚀 快速开始（2 分钟）
 
-需要 [Node.js](https://nodejs.org/) 18 或更新版本。
+1. 安装 **[Node.js](https://nodejs.org/)**（选 LTS 版本），只需要装一次。
+2. 下载游戏：在 GitHub 页面点 **Code → Download ZIP** 并解压（或者 `git clone https://github.com/khaichonggg/Game.git`）。
+3. 启动：
+   - **Windows**：双击 **`start.bat`**
+   - **macOS**：双击 **`start.command`**（第一次需要右键 → 打开）
+   - **Linux**：运行 **`./start.sh`**
+
+浏览器会自动打开游戏。**不需要 `npm install`**，需要的东西都已经包含在里面了。
+
+<details>
+<summary>喜欢用命令行？</summary>
 
 ```bash
 git clone https://github.com/khaichonggg/Game.git
 cd Game
-npm install
-npm start
+npm start            # 或者：node launcher.js
 ```
 
-浏览器打开 **http://localhost:3000** 即可。窗口里还会显示给朋友用的局域网地址。
+3000 端口被占用时会自动换下一个。也可以用 `PORT=8080` 指定端口；如果窗口里显示的局域网地址不对，可以用 `LAN_IP=192.168.1.5` 手动指定。
+</details>
 
-> 💡 没有 Git？在 GitHub 页面点 **Code → Download ZIP**，解压后在文件夹里同样运行 `npm install` 和 `npm start`。
+## 📶 和朋友联机（同一个 Wi-Fi）
 
-## 📶 和朋友联机（同一个局域网）
+游戏启动后，窗口里会显示给朋友用的地址**和一个二维码**：
 
-1. 一台电脑运行 `npm start`，这台电脑就是服务器（不要关掉窗口）。
-2. 朋友连上**同一个 Wi-Fi**，用浏览器打开窗口里显示的局域网地址，例如 `http://192.168.1.23:3000`。
-3. 房主点「创建房间」→「邀请」：朋友可以**扫二维码**、输入 **4 位房间码**，或者在「局域网房间」列表里直接加入。
+1. 不要关掉这个窗口，这台电脑就是服务器。
+2. 朋友连上**同一个 Wi-Fi**，用手机扫窗口里的二维码，或者在任何设备的浏览器里打开显示的地址。
+3. 进游戏后，房主点「创建房间」→「邀请」可以看到房间二维码和 4 位房间码；朋友也可以在「局域网房间」里直接加入。
 4. Windows 第一次运行时如果弹出防火墙提示，请勾选「专用网络」并点「允许访问」。
 
-想和不在身边的朋友玩，可以部署到任意支持 Node + WebSocket 的平台（Render、Railway、Fly.io、自己的服务器等），启动命令 `npm start`，端口读取环境变量 `PORT`。
+## 🌍 不在同一个 Wi-Fi（外网链接）
+
+房主在「邀请」里切到 **🌍 外网链接** → **生成外网链接**，游戏会用免费的 [Cloudflare Quick Tunnel](https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/do-more-with-tunnels/trycloudflare/) 生成一个 `https://….trycloudflare.com` 的公网网址和二维码，**不用注册、不用设置路由器**，发给任何地方的朋友都能打开。第一次使用会自动下载一个小组件 `cloudflared`；关掉游戏窗口后链接失效。
+
+想要固定网址，也可以部署到任意支持 Node + WebSocket 的平台（Render、Railway、Fly.io、自己的服务器等），启动命令 `npm start`，端口读取环境变量 `PORT`。
 
 ### 房间与组队功能
 
@@ -94,6 +109,7 @@ npm start
 | 🔴🔵 分队 | 足球模式自动平衡，可以自己换队，房主可随机分队 |
 | 💬 聊天 / 表情 | 大厅聊天，大厅和游戏里都能发 8 种表情（数字键 1~8） |
 | 🔌 断线重连 | 刷新页面或断网后自动回到原位；比赛中 60 秒内由机器人代打 |
+| 🌍 外网链接 | 一键生成公网网址和二维码，不在同一个 Wi-Fi 也能玩 |
 | ➕ 中途加入 | 可复活的模式直接上场，淘汰制下一局上场 |
 | 🏁 中途结束 | 房主可以在菜单里结束当前比赛 |
 
@@ -164,6 +180,10 @@ server/modes.js      7 种模式的规则
 server/levels.js     绳索闯关的关卡（字符画）
 server/bots.js       机器人 AI
 server/updater.js    检查 GitHub 新版本并自动更新
+server/tunnel.js     外网链接（Cloudflare Quick Tunnel）
+server/lan.js        找局域网地址、控制台二维码
+server/vendor/ws/    自带的 WebSocket 库（MIT），不需要 npm install
+start.bat / start.command / start.sh   双击启动脚本
 public/js/           客户端：界面、双语、输入、音效、3D 渲染
 test/                自动化测试
 ```
