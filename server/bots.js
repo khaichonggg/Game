@@ -91,7 +91,13 @@ function think(room, p, dt) {
   const sp = Math.hypot(p.vx, p.vy);
   const stop = Math.min(500, (sp / damping) * 0.9) + radiusOf(p);
   const sliding = sp > 60 && !room.safeAt(p.x + (p.vx / sp) * stop, p.y + (p.vy / sp) * stop);
-  if (sliding || !room.safeAt(p.x + (dx / l) * look, p.y + (dy / l) * look) || !hereSafe) {
+  if (goal.raw) {
+    // 模式自己规划好了路线：只在要滑出去的时候刹车
+    if (sliding) {
+      dx = dx / l - (p.vx / sp) * 1.2;
+      dy = dy / l - (p.vy / sp) * 1.2;
+    }
+  } else if (sliding || !room.safeAt(p.x + (dx / l) * look, p.y + (dy / l) * look) || !hereSafe) {
     dx = ctx.refuge.x - p.x;
     dy = ctx.refuge.y - p.y;
     if (sliding) {

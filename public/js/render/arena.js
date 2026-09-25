@@ -156,10 +156,12 @@ function tileShape(t, inset) {
   return s;
 }
 
+let exitZone = new Set();
 function buildArena(def) {
   disposeGroup(arena);
   tiles = [];
   bumpers = [];
+  exitZone = new Set(def.level ? def.feat.exit : []);
   const f = theme.floor;
   const bevel = 2.5;
   const isIce = theme === THEMES.ice;
@@ -174,6 +176,12 @@ function buildArena(def) {
     const isCenter = t.l >= def.center;
     const palette = isCenter ? f.center : f.cols;
     const col = new THREE.Color(palette[t.c % palette.length]);
+    // 闯关关卡：机关地砖用醒目的颜色（闪烁地砖橙 / 蓝两组，钥匙桥木头色，机关桥青色，终点岛带一点绿）
+    if (def.level) {
+      const lc = { A: '#ff9d3a', B: '#3fb8ff', k: '#c8935a', p: '#4fd6d0', E: t.c ? '#ffe27a' : '#fff6d0' }[t.ch];
+      if (lc) col.lerp(new THREE.Color(lc), 0.75);
+      else if (exitZone.has(i)) col.lerp(new THREE.Color('#7be38b'), 0.28);
+    }
     if (isIce) col.offsetHSL(0, 0, Math.sin(i * 12.9898) * 0.02);
     const top = std(col, { roughness: f.rough, metalness: f.metal, emissive: '#ff2a00', emissiveIntensity: 0 });
     const geo = new THREE.ExtrudeGeometry(tileShape(t, 3), {
@@ -212,7 +220,9 @@ function buildArena(def) {
     tiles.push({ mesh: m, mat: top, def: t, base: m.position.clone(), state: 0, anim: null, vy: 0, t: 0, spin: new THREE.Vector3(), splashed: false });
   });
 
-  if (theme === THEMES.lava) {
+  if (def.level) {
+    // 关卡没有圆形中心，不放中心装饰
+  } else if (theme === THEMES.lava) {
     // 中心金色镶嵌 + 浮岛底部的巨大岩锥
     const gold = std('#ffcf4a', { metalness: 0.8, roughness: 0.3, emissive: '#7a4a00', emissiveIntensity: 0.4 });
     const inlay = new THREE.Mesh(new THREE.TorusGeometry(70, 3, 8, 64), gold);
@@ -263,6 +273,153 @@ function buildArena(def) {
     bumpers.push({ jelly, squash: 0, squashV: 0 });
   });
   arenaR = def.radius;
+}
+
+// ---------------------------------------------------------------------
+// 闯关关卡的机关：压力板、锁台、出口传送门、还没出现的桥的虚线轮廓
+// ---------------------------------------------------------------------
+export const level = { plates: [], lock: null, exit: null, active: false };
+function buildLevel(def) {
+  level.plates = [];
+  level.lock = null;
+  level.exit = null;
+  level.active = !!def.level;
+  for (const t of tiles) t.ghost = null;
+  if (!def.level) return;
+  const f = def.feat;
+  // 待出现地砖的轮廓：钥匙桥金色、机关桥青色、闪烁地砖橙 / 蓝
+  const ghostCol = { k: '#ffd23f', p: '#4ff0e0', A: '#ff9d3a', B: '#3fb8ff' };
+  tiles.forEach((tile) => {
+    const c = ghostCol[tile.def.ch];
+    if (!c) return;
+    const h = tile.def.s / 2 - 5;
+    const pts = [new THREE.Vector3(-h, 0, -h), new THREE.Vector3(h, 0, -h), new THREE.Vector3(h, 0, h), new THREE.Vector3(-h, 0, h), new THREE.Vector3(-h, 0, -h)];
+    const line = new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), new THREE.LineDashedMaterial({ color: c, dashSize: 10, gapSize: 7, transparent: true, opacity: 0.9 }));
+    line.computeLineDistances();
+    line.position.set(tile.def.cx, 1.5, tile.def.cy);
+    const fill = new THREE.Mesh(new THREE.PlaneGeometry(h * 2, h * 2).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: c, transparent: true, opacity: 0.12, depthWrite: false }));
+    line.add(fill);
+    line.visible = false;
+    arena.add(line);
+    tile.ghost = line;
+  });
+  // 压力板：底座 + 会被踩下去的大按钮
+  for (const pl of f.plates) {
+    const g = new THREE.Group();
+    g.position.set(pl.x, 0, pl.y);
+    const base = new THREE.Mesh(new THREE.CylinderGeometry(33, 36, 5, 32), std('#3a3550', { metalness: 0.6, roughness: 0.35 }));
+    base.position.y = 2.5;
+    base.receiveShadow = true;
+    g.add(base);
+    const mat = std('#ff5a5f', { roughness: 0.3, emissive: '#ff2a2a', emissiveIntensity: 0.5 });
+    const btn = new THREE.Mesh(new THREE.CylinderGeometry(26, 28, 8, 32), mat);
+    btn.position.y = 9;
+    btn.castShadow = true;
+    g.add(btn);
+    const ring = new THREE.Mesh(new THREE.RingGeometry(38, 44, 40).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: '#ff5a5f', transparent: true, opacity: 0.7, depthWrite: false }));
+    ring.position.y = 1.2;
+    g.add(ring);
+    arena.add(g);
+    level.plates.push({ g, btn, mat, ring, y: 9 });
+  }
+  // 锁台：石柱 + 金色锁孔，开锁后发光
+  if (f.lock) {
+    const g = new THREE.Group();
+    g.position.set(f.lock.x, 0, f.lock.y);
+    const stone = std('#6b6478', { roughness: 0.8, flatShading: true });
+    const pillar = new THREE.Mesh(new THREE.CylinderGeometry(16, 20, 44, 8), stone);
+    pillar.position.y = 22;
+    pillar.castShadow = true;
+    g.add(pillar);
+    const gold = std('#ffcf4a', { metalness: 0.9, roughness: 0.25, emissive: '#7a4a00', emissiveIntensity: 0.3 });
+    const plate = new THREE.Mesh(new THREE.BoxGeometry(26, 30, 6), gold);
+    plate.position.set(0, 36, 0);
+    g.add(plate);
+    const hole = new THREE.Mesh(new THREE.CylinderGeometry(4, 4, 8, 12).rotateX(Math.PI / 2), std('#1b1822'));
+    hole.position.set(0, 40, 0);
+    g.add(hole);
+    const slot = new THREE.Mesh(new THREE.BoxGeometry(3, 9, 8), std('#1b1822'));
+    slot.position.set(0, 34, 0);
+    g.add(slot);
+    const glow = new THREE.Mesh(new THREE.SphereGeometry(30, 16, 12), new THREE.MeshBasicMaterial({ color: '#ffd23f', transparent: true, opacity: 0, depthWrite: false, blending: THREE.AdditiveBlending }));
+    glow.position.y = 36;
+    g.add(glow);
+    arena.add(g);
+    level.lock = { g, glow, gold };
+  }
+  // 出口：旋转的传送门 + 光柱
+  if (f.exitCore && f.exitCore.length) {
+    let x = 0;
+    let y = 0;
+    for (const id of f.exitCore) {
+      x += def.tiles[id].cx / f.exitCore.length;
+      y += def.tiles[id].cy / f.exitCore.length;
+    }
+    const g = new THREE.Group();
+    g.position.set(x, 0, y);
+    const ringMat = new THREE.MeshStandardMaterial({ color: '#7bffb0', emissive: '#3ddc84', emissiveIntensity: 1.2, roughness: 0.3 });
+    const ring = new THREE.Mesh(new THREE.TorusGeometry(46, 6, 12, 48), ringMat);
+    ring.position.y = 60;
+    g.add(ring);
+    const inner = new THREE.Mesh(new THREE.CircleGeometry(42, 40), new THREE.MeshBasicMaterial({ color: '#b8ffd8', transparent: true, opacity: 0.35, side: THREE.DoubleSide, depthWrite: false, blending: THREE.AdditiveBlending }));
+    inner.position.y = 60;
+    g.add(inner);
+    for (const s of [-1, 1]) {
+      const post = new THREE.Mesh(new THREE.CylinderGeometry(6, 8, 60, 10), std('#e8e2d0', { roughness: 0.4 }));
+      post.position.set(s * 46, 30, 0);
+      g.add(post);
+    }
+    const beam = new THREE.Mesh(new THREE.CylinderGeometry(60, 60, 500, 32, 1, true), new THREE.MeshBasicMaterial({ color: '#7bffb0', transparent: true, opacity: 0.08, side: THREE.DoubleSide, depthWrite: false, blending: THREE.AdditiveBlending }));
+    beam.position.y = 250;
+    g.add(beam);
+    arena.add(g);
+    level.exit = { g, ring, inner, beam };
+  }
+}
+
+// 关卡是长条形的，远景装饰（岩柱、冰山等）可能压在关卡上，挪走离地砖太近的
+function clearDecorNearLevel() {
+  const near = (x, z, pad) => tiles.some((t) => Math.abs(t.def.cx - x) < pad && Math.abs(t.def.cy - z) < pad);
+  for (const o of [...decor.children]) {
+    if (near(o.position.x, o.position.z, 320)) {
+      decor.remove(o);
+      disposeGroup(o);
+    }
+  }
+  for (const f of floaters) f.r = Math.max(f.r, arenaR + 260);
+}
+
+// 每帧根据模式数据更新机关的样子
+export function updateLevel(m, dt, t) {
+  if (!level.active) return;
+  for (const tile of tiles) {
+    if (!tile.ghost) continue;
+    tile.ghost.visible = tile.state === 2 && !tile.anim;
+    if (tile.ghost.visible) tile.ghost.material.opacity = 0.55 + 0.35 * Math.sin(t * 4 + tile.def.cx * 0.01);
+  }
+  (m.plates || []).forEach((pl, i) => {
+    const v = level.plates[i];
+    if (!v) return;
+    const on = pl.on || m.pOpen;
+    v.y += ((on ? 3.5 : 9) - v.y) * Math.min(1, dt * 14);
+    v.btn.position.y = v.y;
+    const c = on ? '#3ddc84' : '#ff5a5f';
+    v.mat.color.set(c);
+    v.mat.emissive.set(on ? '#16a35a' : '#ff2a2a');
+    v.mat.emissiveIntensity = on ? 0.9 : 0.35 + 0.25 * Math.sin(t * 5 + i);
+    v.ring.material.color.set(c);
+    v.ring.scale.setScalar(on ? 1 : 1 + 0.06 * Math.sin(t * 5 + i));
+  });
+  if (level.lock) {
+    const open = !!m.kOpen;
+    level.lock.glow.material.opacity += ((open ? 0.45 : 0) - level.lock.glow.material.opacity) * Math.min(1, dt * 5);
+    level.lock.gold.emissiveIntensity = open ? 1 : 0.3;
+  }
+  if (level.exit) {
+    level.exit.ring.rotation.y = t * 1.2;
+    level.exit.inner.rotation.y = t * 1.2;
+    level.exit.beam.material.opacity = 0.06 + 0.04 * Math.sin(t * 3) + (m.need && m.inExit ? (m.inExit / m.need) * 0.12 : 0);
+  }
 }
 
 function buildDecor(id) {
@@ -441,7 +598,8 @@ function buildDecor(id) {
 
 export function applyMap(def) {
   mapDef = def;
-  theme = THEMES[def.id] || THEMES.lava;
+  const themeId = def.theme || def.id;
+  theme = THEMES[themeId] || THEMES.lava;
   const th = theme;
   skyMat.uniforms.uTop.value.set(th.sky[0]);
   skyMat.uniforms.uMid.value.set(th.sky[1]);
@@ -467,24 +625,36 @@ export function applyMap(def) {
   sun.intensity = th.sun[1];
   underLight.color.set(th.under[0]);
   // 每张图的泛光强度 / 阈值（糖果和冰面本身很亮，泛光要收着点）
-  const bl = { lava: [0.5, 1.6], ice: [0.35, 1.9], space: [0.6, 1.3], candy: [0.3, 2.0] }[def.id] || [0.5, 1.6];
+  const bl = { lava: [0.5, 1.6], ice: [0.35, 1.9], space: [0.6, 1.3], candy: [0.3, 2.0] }[themeId] || [0.5, 1.6];
   bloom.strength = bl[0];
   bloom.threshold = bl[1];
   buildArena(def);
   for (const t of tiles) t.baseColor = t.mat.color.clone();
-  buildDecor(def.id);
+  buildLevel(def);
+  buildDecor(themeId);
+  if (def.level) clearDecorNearLevel();
   clearParticles();
   paintKey = '';
+  freshMap = true;
 }
 
 // 地砖状态：0 正常 1 预警 2 已塌；返回当前还在的场地半径（给镜头用）
+let freshMap = false;
 export function syncTiles(str) {
   if (!str || str.length !== tiles.length) return arenaR;
   let maxR = 0;
+  const instant = freshMap;
+  freshMap = false;
   for (let i = 0; i < tiles.length; i++) {
     const tile = tiles[i];
     const s = str.charCodeAt(i) - 48;
-    if (s !== tile.state) {
+    if (s !== tile.state && instant) {
+      // 刚换地图：直接摆成当前状态（比如还没出现的桥），不播放掉落动画
+      tile.state = s;
+      tile.anim = null;
+      tile.mesh.visible = s !== 2;
+      tile.mesh.position.copy(tile.base);
+    } else if (s !== tile.state) {
       if (s === 2) {
         tile.anim = 'fall';
         tile.vy = 0;

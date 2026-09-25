@@ -8,7 +8,7 @@ const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
 const r1 = (v) => Math.round(v * 10) / 10;
 
 const emptyFx = () => ({ big: 0, speed: 0, shield: 0, ghost: 0, frozen: 0, slip: 0 });
-const emptyStats = () => ({ kills: 0, falls: 0, hits: 0, items: 0, goals: 0, tiles: 0, dmg: 0, finishers: 0, passes: 0, crown: 0 });
+const emptyStats = () => ({ kills: 0, falls: 0, hits: 0, items: 0, goals: 0, tiles: 0, dmg: 0, finishers: 0, passes: 0, crown: 0, keys: 0, plates: 0, saves: 0 });
 
 // 半径和体重：玩家受道具影响；球、Boss、小怪用自己的属性
 function radiusOf(b) {

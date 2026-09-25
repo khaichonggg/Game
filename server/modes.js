@@ -17,7 +17,12 @@
 //   snapshot(room)              发给客户端的模式数据
 //   botGoal(room, p, ctx)       机器人的目标点 { x, y, dash }
 //   accelMul(room, p)
-const { rand, dist, r1, emptyFx, radiusOf } = require('./util');
+//   beforeRound(room)           每一局开始、摆放玩家之前（闯关模式在这里换关卡地图）
+//   constrain(room, active, dt) 每帧碰撞之后（闯关模式的绳子）
+//   respawnPos(room, p)         复活位置
+//   keepBroken(room, tileId)    塌掉的地砖是否不再长回来
+const { rand, dist, r1, emptyFx, radiusOf, massOf } = require('./util');
+const { STAGES, getLevel } = require('./levels');
 const { PLAYER_R } = require('./constants');
 
 const alivePlayers = (room) => room.list().filter((p) => p.alive && !p.falling);
@@ -780,5 +785,394 @@ const boss = {
   },
 };
 
-const MODES = { classic, football, crown, paint, potato, boss };
+// ---------------------------------------------------------------------
+// 绳索闯关（协作 1-8 人）：全队按 1-2-3-…顺序用绳子串成一串。
+// 每关要拿钥匙开锁放下吊桥、同时踩住压力板、踩着闪烁地砖过河，全员站进出口才算过关。
+// 有人踩空时，只要绳子另一头的队友站稳了，就会被吊在边上慢慢拉回来。
+// ---------------------------------------------------------------------
+const ROPE_LEN = 150; // 相邻两人之间绳子的最大长度
+const ROPE_DIFF = {
+  1: { lives: [8, 2], blink: 3.2, soloHold: 5, hangMax: 6, name: '简单' },
+  2: { lives: [5, 1], blink: 2.6, soloHold: 4, hangMax: 4.5, name: '普通' },
+  3: { lives: [3, 0.5], blink: 2.1, soloHold: 3, hangMax: 3, name: '困难' },
+};
+const tileCenter = (room, id) => {
+  const t = room.map.layout.tiles[id];
+  return { x: t.cx, y: t.cy };
+};
+
+const rope = {
+  id: 'rope',
+  targets: [1, 2, 3],
+  defaultTarget: 2,
+  minPlayers: 1,
+  coop: true,
+  respawn: true,
+  respawnDelay: 2.5,
+  roundEndDelay: 3,
+  noItems: true,
+  ropeLen: ROPE_LEN,
+  hazards: { collapse: false, cracks: 'none', meteors: false },
+  keepBroken: () => true, // 桥和闪烁地砖只由模式控制，不会自己长回来
+  chain: (room) => room.list().filter((p) => p.alive && !p.falling && !p.out),
+  setup(room) {
+    const n = Math.max(1, room.list().length);
+    const d = ROPE_DIFF[room.settings.target] || ROPE_DIFF[2];
+    for (const p of room.list()) p.team = 0;
+    room.m.diff = d;
+    room.m.livesMax = room.m.lives = Math.round(d.lives[0] + n * d.lives[1]);
+    room.m.stage = 0;
+    room.m.stageTimes = [];
+  },
+  beforeRound(room) {
+    room.m.stage = Math.min(room.round, STAGES.length - 1);
+    room.m.level = getLevel(room.m.stage, room.settings.map);
+  },
+  startRound(room) {
+    const m = room.m;
+    const f = m.level.feat;
+    for (const id of [...f.kBridge, ...f.pBridge, ...f.blinkB]) {
+      room.tileState[id] = 2;
+      room.tileTimer[id] = Infinity;
+    }
+    m.key = f.key ? { x: f.key.x, y: f.key.y, holder: null, done: false } : null;
+    m.plates = f.plates.map((p) => ({ x: p.x, y: p.y, t: 0, on: false }));
+    m.kOpen = !f.key;
+    m.pOpen = !f.plates.length;
+    m.blink = f.blinkA.length ? { phase: 0, t: m.diff.blink } : null;
+    m.stageStart = room.matchTime;
+    m.inExit = 0;
+    m.need = room.list().filter((p) => !p.out).length;
+    m.exitSet = new Set(f.exit);
+    m.exitAt = f.exitCore.reduce((a, id) => {
+      const c = tileCenter(room, id);
+      return { x: a.x + c.x / f.exitCore.length, y: a.y + c.y / f.exitCore.length };
+    }, { x: 0, y: 0 });
+  },
+  // 出生点：按蛇形顺序排，保证 1 挨着 2、2 挨着 3……
+  spawn(room, p, i) {
+    const tiles = room.map.layout.tiles;
+    const ids = [...room.m.level.feat.spawns].sort((a, b) => tiles[a].gj - tiles[b].gj || (tiles[a].gj % 2 ? tiles[b].gi - tiles[a].gi : tiles[a].gi - tiles[b].gi));
+    const slots = [];
+    for (const id of ids) for (const s of [-1, 1]) slots.push({ x: tiles[id].cx + s * 17, y: tiles[id].cy });
+    return slots[i % slots.length];
+  },
+  // 绳子：相邻两人超过长度就互相拉；踩空的人被吊住
+  constrain(room, active, dt, playing) {
+    const m = room.m;
+    const chain = rope.chain(room);
+    if (chain.length < 2) {
+      for (const p of chain) p.hanging = false;
+      return;
+    }
+    const inv = (p) => (p.hanging ? 4 : 1) / massOf(p);
+    for (let it = 0; it < 3; it++) {
+      for (let i = 0; i < chain.length - 1; i++) {
+        const a = chain[i];
+        const b = chain[i + 1];
+        const dx = b.x - a.x;
+        const dy = b.y - a.y;
+        const d = Math.hypot(dx, dy);
+        if (d <= ROPE_LEN || d === 0) continue;
+        const nx = dx / d;
+        const ny = dy / d;
+        const wa = inv(a);
+        const wb = inv(b);
+        const sa = wa / (wa + wb);
+        const sb = wb / (wa + wb);
+        const ex = d - ROPE_LEN;
+        a.x += nx * ex * sa;
+        a.y += ny * ex * sa;
+        b.x -= nx * ex * sb;
+        b.y -= ny * ex * sb;
+        const vr = (b.vx - a.vx) * nx + (b.vy - a.vy) * ny;
+        if (vr < 0) {
+          a.vx += nx * vr * sa;
+          a.vy += ny * vr * sa;
+          b.vx -= nx * vr * sb;
+          b.vy -= ny * vr * sb;
+        }
+      }
+    }
+    if (!playing) return;
+    const grounded = chain.map((p) => room.supported(p.x, p.y));
+    const load = new Map();
+    chain.forEach((p, i) => {
+      if (grounded[i]) {
+        if (p.hanging) {
+          // 被队友拉回地面了
+          p.hanging = false;
+          const by = room.players.get(p.anchor);
+          if (by && by !== p) by.stats.saves++;
+          room.event({ type: 'saved', id: p.id, by: by ? by.id : null });
+        }
+        p.hangT = 0;
+        return;
+      }
+      // 只有直接相邻、而且站稳了的队友才拉得住你
+      const nb = [i - 1, i + 1].filter((k) => k >= 0 && k < chain.length && grounded[k] && dist(chain[k], p) <= ROPE_LEN + 20).map((k) => chain[k]);
+      if (!nb.length || (p.hanging && p.hangT > m.diff.hangMax)) {
+        if (p.hanging) room.event({ type: 'ropeSlip', id: p.id });
+        p.hanging = false;
+        p.hangT = -99; // 这次掉下去，不再抓住
+        return;
+      }
+      if (p.hangT < 0) return;
+      const a = nb.reduce((x, y) => (dist(x, p) <= dist(y, p) ? x : y));
+      if (!p.hanging) {
+        p.hanging = true;
+        p.hangT = 0;
+        p.anchor = a.id;
+        room.event({ type: 'hang', id: p.id, by: a.id });
+      }
+      p.hangT += dt;
+      // 慢慢往队友那边拉
+      const dx = a.x - p.x;
+      const dy = a.y - p.y;
+      const d = Math.hypot(dx, dy) || 1;
+      const damp = Math.max(0, 1 - 5 * dt);
+      p.vx = p.vx * damp + (dx / d) * 520 * dt;
+      p.vy = p.vy * damp + (dy / d) * 520 * dt;
+      load.set(a, (load.get(a) || []).concat(p));
+    });
+    // 一个人拉两个就拉不住了，会被一起往外拖
+    for (const [a, hangers] of load) {
+      const k = hangers.length >= 2 ? 700 : 110;
+      for (const h of hangers) {
+        const dx = h.x - a.x;
+        const dy = h.y - a.y;
+        const d = Math.hypot(dx, dy) || 1;
+        a.vx += (dx / d) * k * dt;
+        a.vy += (dy / d) * k * dt;
+      }
+    }
+  },
+  update(room, dt) {
+    const m = room.m;
+    const f = m.level.feat;
+    const standing = rope.chain(room).filter((p) => !p.hanging);
+    // 钥匙：碰到就拿起来，送到锁上放下吊桥；拿钥匙的人掉下去钥匙会回到原处
+    if (m.key && !m.key.done) {
+      const k = m.key;
+      let h = k.holder ? room.players.get(k.holder) : null;
+      if (k.holder && (!h || !h.alive || h.falling || h.out)) {
+        h = null;
+        k.holder = null;
+        k.x = f.key.x;
+        k.y = f.key.y;
+        room.event({ type: 'keyReset' });
+      }
+      if (!h) {
+        const p = standing.find((q) => Math.hypot(q.x - k.x, q.y - k.y) < 42);
+        if (p) {
+          h = p;
+          k.holder = p.id;
+          room.event({ type: 'keyPick', id: p.id });
+        }
+      }
+      if (h) {
+        k.x = h.x;
+        k.y = h.y;
+        if (!h.hanging && Math.hypot(h.x - f.lock.x, h.y - f.lock.y) < 48) {
+          k.done = true;
+          k.holder = null;
+          k.x = f.lock.x;
+          k.y = f.lock.y;
+          m.kOpen = true;
+          h.stats.keys++;
+          for (const id of f.kBridge) room.tileState[id] = 0;
+          room.event({ type: 'unlock', id: h.id, x: f.lock.x, y: f.lock.y });
+        }
+      }
+    }
+    // 压力板：全部同时亮起才打开机关桥（一个人玩时踩过的板会亮一会儿）
+    if (!m.pOpen && m.plates.length) {
+      const hold = rope.chain(room).length <= 1 ? m.diff.soloHold : 0.35;
+      m.plates.forEach((pl, i) => {
+        const p = standing.find((q) => Math.hypot(q.x - pl.x, q.y - pl.y) < 38);
+        if (p) {
+          if (pl.t <= 0) {
+            p.stats.plates++;
+            room.event({ type: 'plate', i, id: p.id, x: pl.x, y: pl.y });
+          }
+          pl.t = hold;
+        } else pl.t = Math.max(0, pl.t - dt);
+        pl.on = pl.t > 0;
+      });
+      if (m.plates.every((pl) => pl.on)) {
+        m.pOpen = true;
+        for (const id of f.pBridge) room.tileState[id] = 0;
+        const c = f.pBridge.length ? tileCenter(room, f.pBridge[Math.floor(f.pBridge.length / 2)]) : m.plates[0];
+        room.event({ type: 'platesOpen', x: c.x, y: c.y });
+      }
+    }
+    for (const p of room.list()) p.score = p.stats.keys * 5 + p.stats.plates * 2 + p.stats.saves * 3;
+    // 闪烁地砖：新的一组先出现，旧的一组过 0.7 秒再消失
+    if (m.blink) {
+      const b = m.blink;
+      b.t -= dt;
+      if (b.t <= 0) {
+        const show = b.phase === 0 ? f.blinkB : f.blinkA;
+        const hide = b.phase === 0 ? f.blinkA : f.blinkB;
+        b.phase = 1 - b.phase;
+        b.t = m.diff.blink;
+        for (const id of show) room.tileState[id] = 0;
+        for (const id of hide) room.warnTile(id, 0.7);
+        room.event({ type: 'blink' });
+      }
+    }
+  },
+  onPlayerFall(room, p) {
+    if (room.m.lives > 0) room.m.lives--;
+    else p.out = true;
+  },
+  canRespawn: (room, p) => !p.out,
+  // 复活在链子上相邻的队友旁边，不会被甩到很远的地方
+  respawnPos(room, p) {
+    const list = room.list();
+    const idx = list.indexOf(p);
+    const ok = (q) => q && q !== p && q.alive && !q.falling && !q.hanging && room.safeAt(q.x, q.y);
+    let near = null;
+    for (let d = 1; d < list.length && !near; d++) near = [list[idx - d], list[idx + d]].find(ok) || null;
+    const tiles = room.map.layout.tiles;
+    const blink = new Set([...room.m.level.feat.blinkA, ...room.m.level.feat.blinkB]);
+    const bodies = room.activeBodies();
+    const from = near || tileCenter(room, room.m.level.feat.spawns[0]);
+    let best = null;
+    let bd = Infinity;
+    tiles.forEach((t, i) => {
+      if (room.tileState[i] !== 0 || blink.has(i)) return;
+      const d = Math.hypot(t.cx - from.x, t.cy - from.y);
+      if (d > 260 || d >= bd) return;
+      if (bodies.some((b) => Math.hypot(b.x - t.cx, b.y - t.cy) < 40)) return;
+      if ((room.map.bumpers || []).some((b) => Math.hypot(b.x - t.cx, b.y - t.cy) < b.r + 30)) return;
+      best = t;
+      bd = d;
+    });
+    return best ? { x: best.cx, y: best.cy } : null;
+  },
+  check(room) {
+    const m = room.m;
+    const list = room.list();
+    const need = list.filter((p) => !p.out);
+    if (!need.length || !list.some((p) => (p.alive && !p.falling) || p.falling > 0 || (!p.out && p.respawn > 0))) {
+      room.endMatch([], { coop: { win: false, stage: m.stage }, text: '绳子断光了……' });
+      return;
+    }
+    const inside = (p) => p.alive && !p.falling && !p.hanging && m.exitSet.has(room.tileAt(p.x, p.y));
+    m.need = need.length;
+    m.inExit = need.filter(inside).length;
+    if (m.inExit === need.length) {
+      m.stageTimes.push(Math.round(room.matchTime - m.stageStart));
+      room.endRound({ text: `第 ${m.stage + 1} 关通过！` });
+      room.event({ type: 'stageClear', stage: m.stage });
+    }
+  },
+  matchOver(room) {
+    if (room.m.stage + 1 >= STAGES.length) return { winners: room.list().map((p) => p.id), coop: { win: true, stage: room.m.stage }, text: '全部通关！' };
+    return null;
+  },
+  snapshot(room) {
+    const m = room.m;
+    if (!m.level) return {};
+    return {
+      stage: m.stage,
+      stages: STAGES.length,
+      stageName: STAGES[m.stage].name,
+      hint: STAGES[m.stage].hint,
+      lives: m.lives,
+      livesMax: m.livesMax,
+      diff: m.diff.name,
+      key: m.key ? { x: r1(m.key.x), y: r1(m.key.y), h: m.key.holder, d: m.key.done ? 1 : 0 } : null,
+      plates: m.plates.map((p) => ({ x: p.x, y: p.y, on: p.on ? 1 : 0, t: r1(p.t) })),
+      kOpen: m.kOpen ? 1 : 0,
+      pOpen: m.pOpen ? 1 : 0,
+      inExit: m.inExit,
+      need: m.need,
+      blink: m.blink ? r1(m.blink.t) : -1,
+      exit: m.exitAt,
+      times: m.stageTimes,
+      ropeLen: ROPE_LEN,
+    };
+  },
+  // 机器人：在地砖网格上用广度优先搜索找路，按"钥匙 → 压力板 → 出口"的顺序做任务
+  botGoal(room, p, ctx) {
+    const m = room.m;
+    if (!m.level) return null;
+    const f = m.level.feat;
+    const chain = rope.chain(room);
+    const idx = chain.indexOf(p);
+    let target = m.exitAt;
+    if (m.key && !m.key.done && (m.key.holder || rope.path(room, p, m.key).reached)) {
+      target = m.key.holder ? f.lock : m.key;
+    } else if (!m.pOpen && m.plates.length) {
+      const n = chain.length;
+      if (n <= 1) target = m.plates.reduce((a, b) => (a.t <= b.t ? a : b));
+      else {
+        const assigned = m.plates.map((pl, j) => Math.round((j * (n - 1)) / Math.max(1, m.plates.length - 1)));
+        const mine = assigned.indexOf(idx);
+        if (mine >= 0) target = m.plates[mine];
+        else {
+          // 中间的人站在两块板中间偏下的位置，别把队友拉走
+          const cx = m.plates.reduce((s, pl) => s + pl.x, 0) / m.plates.length;
+          const cy = m.plates.reduce((s, pl) => s + pl.y, 0) / m.plates.length + 76;
+          target = { x: cx, y: cy };
+        }
+      }
+    }
+    const route = rope.path(room, p, target);
+    // raw：路线已经只走安全地砖，不需要通用的"前方危险就退回"逻辑
+    return { x: route.x, y: route.y, raw: true };
+  },
+  path(room, p, target) {
+    const lay = room.map.layout;
+    const g = lay.grid;
+    const tiles = lay.tiles;
+    const cellOf = (x, y) => [Math.floor((x - g.ox) / g.cell), Math.floor((y - g.oy) / g.cell)];
+    const [si, sj] = cellOf(p.x, p.y);
+    const [ti, tj] = cellOf(target.x, target.y);
+    const key = (i, j) => i + ',' + j;
+    const walk = (i, j) => {
+      const id = g.index.get(key(i, j));
+      return id !== undefined && room.tileState[id] === 0;
+    };
+    const prev = new Map([[key(si, sj), null]]);
+    const q = [[si, sj]];
+    let best = [si, sj];
+    let bd = Math.hypot(si - ti, sj - tj);
+    while (q.length) {
+      const [i, j] = q.shift();
+      const d = Math.hypot(i - ti, j - tj);
+      if (d < bd) {
+        bd = d;
+        best = [i, j];
+      }
+      if (d === 0) break;
+      for (const [di, dj] of [
+        [1, 0],
+        [-1, 0],
+        [0, 1],
+        [0, -1],
+      ]) {
+        const ni = i + di;
+        const nj = j + dj;
+        const k = key(ni, nj);
+        if (prev.has(k) || !walk(ni, nj)) continue;
+        prev.set(k, [i, j]);
+        q.push([ni, nj]);
+      }
+    }
+    // 从终点倒推，取路线上的第二个格子作为下一步
+    const pathCells = [];
+    for (let c = best; c; c = prev.get(key(c[0], c[1]))) pathCells.unshift(c);
+    const reached = bd === 0;
+    if (reached && pathCells.length <= 2) return { x: target.x, y: target.y, reached };
+    const step = pathCells[Math.min(1, pathCells.length - 1)];
+    const id = g.index.get(key(step[0], step[1]));
+    if (id === undefined) return { x: target.x, y: target.y, reached };
+    return { x: tiles[id].cx, y: tiles[id].cy, reached };
+  },
+};
+
+const MODES = { classic, football, crown, paint, potato, boss, rope };
 module.exports = { MODES, MODE_IDS: Object.keys(MODES) };

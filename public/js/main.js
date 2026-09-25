@@ -285,6 +285,7 @@ function onPhase(from, to) {
     if (to === 'countdown') {
       lastCount = -1;
       aliveThisRound = false;
+      if (state.settings.mode === 'rope') setTimeout(() => ropeHint(), 900);
     }
     if (to === 'playing' && from === 'countdown') {
       banner('<span class="pop">开始！</span>', 900);
@@ -375,7 +376,36 @@ function uiEvents(events) {
       case 'minionDown':
         if (ev.id) killfeed(`👾 ${nameTag(ev.id)} 击落小怪`, ev.id === myId);
         break;
+      case 'keyPick':
+        killfeed(`🔑 ${nameTag(ev.id)} 拿到了钥匙`, ev.id === myId);
+        if (ev.id === myId) toast('🔑 你拿到了钥匙！快送到锁台上', 1800);
+        break;
+      case 'keyReset':
+        toast('<span style="color:#ff8c42">钥匙掉了，回到了原来的地方</span>', 1500);
+        break;
+      case 'unlock':
+        banner('<span class="pop">🔓 吊桥放下了！</span>', 1600);
+        killfeed(`🔓 ${nameTag(ev.id)} 打开了锁`, ev.id === myId);
+        break;
+      case 'plate':
+        if (ev.id === myId && s.m.plates && s.m.plates.length > 1 && s.players.length === 1) toast('压力板会亮几秒，快去踩另一块！', 1400);
+        break;
+      case 'platesOpen':
+        banner('<span class="pop">🟢 机关桥打开了！</span>', 1600);
+        break;
+      case 'hang':
+        if (ev.id === myId) toast(`<span style="color:#ffe066">🪢 ${nameTag(ev.by)} 拉住了你！别急，正在把你拉上来</span>`, 1600);
+        else if (ev.by === myId) toast(`<span style="color:#ffe066">🪢 你拉住了 ${nameTag(ev.id)}！站稳别乱跑</span>`, 1600);
+        killfeed(`🪢 ${nameTag(ev.by)} 拉住了 ${nameTag(ev.id)}`, ev.id === myId || ev.by === myId);
+        break;
+      case 'saved':
+        if (ev.by) killfeed(`💪 ${nameTag(ev.by)} 把 ${nameTag(ev.id)} 拉了上来`, ev.id === myId || ev.by === myId);
+        break;
+      case 'ropeSlip':
+        killfeed(`😱 ${nameTag(ev.id)} 没抓住，掉下去了`, ev.id === myId);
+        break;
       case 'roundEnd':
+        $('toast').style.opacity = '0';
         if (s.roundText) banner(`<span class="pop">${esc(s.roundText)}</span>${roundScoreLine()}`, 3000);
         if (ev.id === myId || (ev.team >= 0 && me() && me().team === ev.team)) sfx.victory();
         else sfx.ready();
@@ -387,10 +417,26 @@ function uiEvents(events) {
   }
 }
 
+// 绳索闯关：每关开始时的提示
+function ropeHint() {
+  const m = state && state.m;
+  if (!m || !m.hint) return;
+  const solo = state.players.length === 1;
+  const text = {
+    key: '拿到钥匙 🔑 送到锁台上，吊桥就会放下',
+    plates: solo ? '一个人玩：踩过的压力板会亮几秒，趁亮着赶紧去踩另一块' : '两块压力板要同时有人踩住，机关桥才会打开',
+    blink: '橙色和蓝色地砖轮流出现，看准时机一起冲过去',
+    final: '钥匙、压力板、闪烁地砖全都有，最后一关加油！',
+  }[m.hint];
+  const tip = m.stage === 0 && !solo ? '<br><small>你们被绳子串在一起：有人踩空时，旁边站稳的队友会把他吊住拉回来</small>' : '';
+  toast(`${text}${tip}`, 4200);
+}
+
 function roundScoreLine() {
   const s = state;
   const mode = s.settings.mode;
   if (mode === 'football') return `<small>${TEAM_NAMES[0]} ${s.teamScore[0]} : ${s.teamScore[1]} ${TEAM_NAMES[1]}</small>`;
+  if (mode === 'rope' && s.m.times) return `<small>用时 ${fmtTime(s.m.times[s.m.times.length - 1] || 0)} · 剩余复活 ${s.m.lives}</small>`;
   if (mode === 'classic' || mode === 'potato') {
     const top = [...s.players].sort((a, b) => b.score - a.score).slice(0, 3);
     return `<small>${top.map((p) => `${esc(p.name)} ${p.score}`).join(' · ')}（先赢 ${s.settings.target} 局）</small>`;
@@ -449,7 +495,7 @@ function renderHUD() {
     const n = Math.ceil(s.timer);
     if (n !== lastCount && n > 0) {
       lastCount = n;
-      const roundTxt = ['classic', 'potato'].includes(mode) ? `第 ${s.round} 局` : mode === 'football' && s.round > 1 ? '重新开球' : `${info.icon} ${info.name}`;
+      const roundTxt = ['classic', 'potato'].includes(mode) ? `第 ${s.round} 局` : mode === 'rope' && s.m.stageName ? `第 ${s.m.stage + 1} 关 · ${s.m.stageName.zh}` : mode === 'football' && s.round > 1 ? '重新开球' : `${info.icon} ${info.name}`;
       banner(`<span class="pop">${n}</span><small>${roundTxt}</small>`, 0);
       sfx.countdown();
     }
@@ -468,6 +514,15 @@ function renderHUD() {
           .join('')
       )
       .join('<div style="height:6px"></div>');
+  } else if (mode === 'rope') {
+    head = '绳子顺序';
+    const km = s.m.key;
+    rows = players
+      .map((p, i) => {
+        const st = p.out ? '💀' : p.hang ? '🪢' : !p.alive || p.falling ? (p.respawn > 0 ? `⏳${Math.ceil(p.respawn)}` : '💧') : km && km.h === p.id ? '🔑' : '';
+        return sbRow({ ...p, name: `${i + 1}. ${p.name}` }, p.profile.color, st);
+      })
+      .join('');
   } else if (mode === 'boss') {
     head = `合力把巨无霸推下去`;
     rows = players
@@ -500,6 +555,15 @@ function renderHUD() {
       const stateTxt =
         b.bossState === 'tired' ? '<b style="color:#ffe066">💫 累趴了！快推！</b>' : b.bossState === 'windup' ? '⚡ 蓄力中' : b.bossState === 'charge' ? '💨 冲撞！' : b.bossState === 'slamWind' ? '⬆️ 跳起砸地' : b.phase >= 2 ? `第 ${b.phase} 阶段` : '';
       top = `<div class="boss-bar"><div class="top"><span>🤖 巨无霸 · ${esc(b.diff)}${b.enraged ? ' <b style="color:#ff5a3a">🔥狂暴</b>' : ''}</span><span>${stateTxt}</span><span>❤️ 共享复活 ${b.lives}</span></div><div class="lives">${pips}</div></div>`;
+    }
+  } else if (mode === 'rope') {
+    const m = s.m;
+    if (m.stages) {
+      const tasks = [];
+      if (m.key) tasks.push(`🔑 ${m.kOpen ? '✔' : m.key.h ? '搬运中' : '✗'}`);
+      if (m.plates && m.plates.length) tasks.push(`🟢 ${m.pOpen ? '✔' : `${m.plates.filter((p) => p.on).length}/${m.plates.length}`}`);
+      tasks.push(`🚪 ${m.inExit || 0}/${m.need || players.length}`);
+      top = `<div class="hud-pill">第 ${m.stage + 1}/${m.stages} 关 · ${esc(m.stageName ? m.stageName.zh : '')} <small>${esc(m.diff)}</small></div><div class="hud-pill" style="font-size:16px">${tasks.join('　')}　❤️ ${m.lives}</div>`;
     }
   } else if (mode === 'crown') {
     const cr = s.m.crown;
@@ -534,7 +598,7 @@ function renderHUD() {
   let spec = '';
   if (m && !m.alive && !m.falling && s.phase !== 'countdown') {
     if (m.out) spec = '😵 复活次数用完了，观战中…';
-    else if (MODES[mode] && ['crown', 'paint', 'football', 'boss'].includes(mode)) spec = m.respawn > 0 ? `⏳ ${Math.ceil(m.respawn)} 秒后复活` : '';
+    else if (['crown', 'paint', 'football', 'boss', 'rope'].includes(mode)) spec = m.respawn > 0 ? `⏳ ${Math.ceil(m.respawn)} 秒后在队友身边复活` : '';
     else spec = aliveThisRound ? '👀 你出局了，观战中…' : '⌛ 比赛进行中，下一局上场';
   }
   setHTML($('spectate'), spec);
@@ -582,7 +646,7 @@ function renderResults() {
   let title;
   let lose = false;
   if (r.coop) {
-    title = r.coop.win ? '🎉 挑战成功！' : '💀 挑战失败';
+    title = r.coop.win ? (r.mode === 'rope' ? '🎉 全部通关！' : '🎉 挑战成功！') : r.mode === 'rope' ? `💀 倒在了第 ${(r.coop.stage || 0) + 1} 关` : '💀 挑战失败';
     lose = !r.coop.win;
   } else if (r.winnerTeam >= 0) {
     title = `${TEAM_NAMES[r.winnerTeam]}获胜！`;
@@ -610,7 +674,7 @@ function renderResults() {
     })
     .join('');
 
-  const scoreHead = { classic: '胜局', potato: '胜局', crown: '戴冠', paint: '地盘', football: '进球', boss: '得分' }[r.mode];
+  const scoreHead = { classic: '胜局', potato: '胜局', crown: '戴冠', paint: '地盘', football: '进球', boss: '得分', rope: '贡献' }[r.mode];
   const total = mapDef ? mapDef.tiles.length : 1;
   const fmtScore = (x) => (r.mode === 'crown' ? `${x.score}s` : r.mode === 'paint' ? `${Math.round((x.score / total) * 100)}%` : x.score);
   $('resTable').innerHTML =
@@ -684,7 +748,13 @@ function renderLobby() {
     }).join('')
   );
   const md = MODES[st.mode];
-  const need = ['classic', 'potato', 'football'].includes(st.mode) ? '<br>💡 至少 2 人（人不够可以加机器人）' : st.mode === 'boss' ? '<br>💡 1~8 人都能玩，人越多 Boss 越重' : '';
+  const need = ['classic', 'potato', 'football'].includes(st.mode)
+    ? '<br>💡 至少 2 人（人不够可以加机器人）'
+    : st.mode === 'boss'
+      ? '<br>💡 1~8 人都能玩，人越多 Boss 越重'
+      : st.mode === 'rope'
+        ? '<br>💡 1~8 人都能玩，地图决定关卡的主题和手感（冰面很滑！）'
+        : '';
   setHTML($('modeDesc'), `<b>${md.icon} ${md.name}</b>：${md.desc}${need}`);
   setHTML($('targetLabel'), md.label);
   setHTML($('targetSeg'), md.targets.map((t) => `<button data-target="${t}" class="${st.target === t ? 'on' : ''}">${md.targetNames ? md.targetNames[t] : t + md.unit}</button>`).join(''));

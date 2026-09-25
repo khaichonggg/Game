@@ -52,6 +52,24 @@ for (const [n, d] of [
   check(room.phase === 'gameOver' && r && r.coop, `boss ${n} 人 难度${d}：${r && r.coop ? (r.coop.win ? '胜利' : '失败') : '未结束'}，用时 ${Math.round(room.matchTime)}s`);
 }
 
+// 绳索闯关：1 / 3 / 8 人都能打通 4 关，地图在关卡之间正确切换
+for (const [n, d, map] of [
+  [1, 1, 'lava'],
+  [3, 2, 'ice'],
+  [8, 2, 'candy'],
+]) {
+  const { room } = runMatch(map, 'rope', n, d);
+  const r = room.results;
+  check(room.phase === 'gameOver' && r && r.coop, `rope ${n} 人 难度${d} @ ${map}：${r && r.coop ? (r.coop.win ? '通关' : '失败于第 ' + (r.coop.stage + 1) + ' 关') : '未结束'}，用时 ${Math.round(room.matchTime)}s`);
+}
+{
+  // 回到大厅后地图恢复成房间选的地图
+  const { room } = runMatch('space', 'rope', 2, 1);
+  const inLevel = room.map.id.startsWith('rope-');
+  room.toLobby();
+  check(inLevel && room.map.id === 'space', '闯关结束回到大厅后，地图恢复成星际空间站');
+}
+
 // 模式特有的事件必须真的发生过
 const has = (modeId, type) => summary.filter((s) => s.modeId === modeId).some((s) => s.ev[type] > 0);
 check(has('football', 'goal'), '足球：有进球');
@@ -62,6 +80,9 @@ check(has('potato', 'potatoBoom'), '烫手炸弹：引信烧完爆炸');
 check(has('boss', 'bossDown'), 'Boss：被推下场');
 check(has('boss', 'bossSlam') && has('boss', 'bossCharge'), 'Boss：会冲撞和砸地');
 check(has('classic', 'collapse'), '经典：外圈坍塌');
+check(has('rope', 'unlock') && has('rope', 'platesOpen') && has('rope', 'blink'), '闯关：开锁、压力板、闪烁地砖都触发了');
+check(has('rope', 'hang') && has('rope', 'saved'), '闯关：踩空被绳子吊住，并被队友拉回来');
+check(has('rope', 'stageClear'), '闯关：有关卡通过');
 check(summary.some((s) => s.mapId === 'space' && s.ev.meteor > 0), '太空站：陨石雨');
 check(summary.some((s) => s.mapId === 'candy' && s.ev.bump > 0), '糖果：弹簧');
 for (const item of ['bomb', 'freeze', 'tornado', 'banana']) {

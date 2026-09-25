@@ -1,10 +1,10 @@
 // 游戏世界：每帧更新角色、展示台、场上物体、模式特效、事件反馈和镜头
 import * as THREE from 'three';
 import { scene, camera, render, textSprite, LIQUID_Y, disposeGroup } from './core.js';
-import { theme, syncTiles, updateArena, ambient, setPaint, bumperHit, resetTiles } from './arena.js';
+import { theme, syncTiles, updateArena, ambient, setPaint, bumperHit, resetTiles, updateLevel, mapDef } from './arena.js';
 import { sparks, dust, burst, starBurst, splash, puff, speedLines, ringWave, popText, updateEffects } from './particles.js';
 import { Character } from './character.js';
-import { makeItemModel, makeTornado, makeBanana, makeMeteor, makeCrown, makeBall, makeGoals, makeBoss, makeMinion, makeHotBomb, makePodium } from './objects.js';
+import { makeItemModel, makeTornado, makeBanana, makeMeteor, makeCrown, makeBall, makeGoals, makeBoss, makeMinion, makeHotBomb, makePodium, makeKey, makeBeacon } from './objects.js';
 import { sfx } from '../audio.js';
 import { ITEMS, TEAM_COLORS, EMOTES } from '../data.js';
 import { settings } from '../settings.js';
@@ -72,6 +72,8 @@ const podiums = [];
 
 function labelText(p, s) {
   let t = p.name;
+  // 绳索闯关：名字前面标上在绳子上的顺序
+  if (s.settings.mode === 'rope' && s.phase !== 'lobby') t = `${s.players.indexOf(p) + 1}. ${t}`;
   if (s.phase === 'lobby') t = (s.hostId === p.id ? '👑 ' : '') + t + (p.ready || s.hostId === p.id ? '' : ' ⌛');
   if (!p.connected && !p.bot) t += ' (掉线)';
   return t;
@@ -99,7 +101,7 @@ function makeView(p, teamMode) {
   const shadow = new THREE.Mesh(blobGeo, blobMat);
   shadow.renderOrder = 1;
   scene.add(shadow);
-  return { ch, shadow, label: null, labelKey: '', bubble: null, bubbleT: 0, x: p.x, z: p.y, yaw: 0, scale: p.r, fy: 0, fvy: 0, splashed: false, pop: 1, hop: 0, visible: true, dropT: 9, dropRound: -1 };
+  return { ch, shadow, label: null, labelKey: '', bubble: null, bubbleT: 0, x: p.x, z: p.y, yaw: 0, scale: p.r, fy: 0, fvy: 0, splashed: false, pop: 1, hop: 0, visible: true, dropT: 9, dropRound: -1, hangY: 0 };
 }
 function disposeView(v) {
   scene.remove(v.ch.root, v.shadow);
@@ -308,6 +310,9 @@ function updatePlayers(dt, t, rdt) {
       v.splashed = false;
     }
     if (game && p.exploded) visible = false;
+    // 被绳子吊在边上：身体往下沉、手脚乱挥
+    v.hangY += ((game && p.hang ? -p.r * 1.7 : 0) - v.hangY) * Math.min(1, rdt * 10);
+    if (game && p.hang) v.ch.flail = Math.max(v.ch.flail, 0.8);
 
     const moving = game && p.fx.frozen <= 0 ? Math.min(1, speed / 250) : 0;
     v.hop += dt * (8 + moving * 10);
@@ -321,9 +326,9 @@ function updatePlayers(dt, t, rdt) {
     v.visible = visible;
     const root = v.ch.root;
     root.visible = visible;
-    root.position.set(v.x, ty + sc * (1 + hopY + celebrate + ghostFloat) + v.fy + dropY, v.z);
+    root.position.set(v.x, ty + sc * (1 + hopY + celebrate + ghostFloat) + v.fy + dropY + v.hangY, v.z);
     const lift = root.position.y - ty - sc;
-    v.shadow.visible = visible && !(game && p.falling);
+    v.shadow.visible = visible && !(game && (p.falling || p.hang));
     v.shadow.position.set(v.x, ty + 1.2, v.z);
     v.shadow.scale.setScalar(Math.max(0.01, sc * 1.25 * Math.max(0.35, 1 - lift / 400)));
     root.scale.setScalar(Math.max(0.01, sc));
@@ -613,6 +618,13 @@ function updateObjects(dt, t) {
     if (Math.random() < dt * 30) sparks.add({ x: hotBomb.g.position.x + 5, y: hotBomb.g.position.y + 27, z: hotBomb.g.position.z, vx: (Math.random() - 0.5) * 60, vy: 60, vz: (Math.random() - 0.5) * 60, life: 0.3, color: '#ffe066', size: 6, g: 120 });
   }
 
+  // 绳索闯关：机关、钥匙、绳子、任务提示
+  const roping = game && s.settings.mode === 'rope' && mapDef && mapDef.level;
+  if (roping) updateLevel(s.m, dt, t);
+  updateKey(roping ? s.m : null, t);
+  updateRopes(roping ? s : null);
+  updateBeacons(roping ? s.m : null, t);
+
   // 涂色
   if (s.settings.mode === 'paint' && s.m.paint) {
     setPaint(s.m.paint, (slot) => {
@@ -621,6 +633,107 @@ function updateObjects(dt, t) {
       return p ? p.profile.color : null;
     });
   } else setPaint(null);
+}
+
+// ---------------------------------------------------------------------
+// 绳索闯关
+// ---------------------------------------------------------------------
+const keyView = makeKey();
+function updateKey(m, t) {
+  const k = m && m.key;
+  keyView.root.visible = !!(k && !k.d);
+  if (!keyView.root.visible) return;
+  const holder = k.h ? views.get(k.h) : null;
+  if (holder) {
+    keyView.root.position.set(holder.x, holder.ch.root.position.y + holder.scale * 2.2 + 14, holder.z);
+    keyView.halo.visible = false;
+  } else {
+    keyView.root.position.set(k.x, 34 + Math.sin(t * 3) * 5, k.y);
+    keyView.halo.visible = true;
+    keyView.halo.rotation.z = t;
+  }
+  keyView.g.rotation.y = t * 2.2;
+}
+
+// 绳子：每段用 12 小节圆柱拼成，松的时候往下垂，拉紧时变红
+const ROPE_SEG = 12;
+const ropeMat = new THREE.MeshStandardMaterial({ color: '#ffffff', roughness: 0.7, emissive: '#3a2a10', emissiveIntensity: 0.4 });
+const ropeMesh = new THREE.InstancedMesh(new THREE.CylinderGeometry(1, 1, 1, 6), ropeMat, ROPE_SEG * 7);
+ropeMesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+ropeMesh.castShadow = true;
+ropeMesh.frustumCulled = false;
+ropeMesh.count = 0;
+scene.add(ropeMesh);
+const tmpM = new THREE.Matrix4();
+const tmpQ = new THREE.Quaternion();
+const tmpS = new THREE.Vector3();
+const UP = new THREE.Vector3(0, 1, 0);
+const pa = new THREE.Vector3();
+const pb = new THREE.Vector3();
+const pc = new THREE.Vector3();
+const bez = (A, C, B, k, out) => out.set(0, 0, 0).addScaledVector(A, (1 - k) * (1 - k)).addScaledVector(C, 2 * (1 - k) * k).addScaledVector(B, k * k);
+function updateRopes(s) {
+  if (!s) {
+    ropeMesh.count = 0;
+    return;
+  }
+  const L = s.m.ropeLen || 150;
+  const chain = s.players.filter((p) => p.alive && !p.falling && !p.out).map((p) => views.get(p.id)).filter((v) => v && v.visible);
+  let n = 0;
+  const a = new THREE.Vector3();
+  const b = new THREE.Vector3();
+  const col = new THREE.Color();
+  for (let i = 0; i < chain.length - 1 && n < ROPE_SEG * 7; i++) {
+    const va = chain[i];
+    const vb = chain[i + 1];
+    pa.set(va.x, va.ch.root.position.y - va.scale * 0.15, va.z);
+    pb.set(vb.x, vb.ch.root.position.y - vb.scale * 0.15, vb.z);
+    const d = pa.distanceTo(pb);
+    const slack = Math.max(0, L - d);
+    pc.copy(pa).add(pb).multiplyScalar(0.5);
+    pc.y -= slack * 0.45 + 4;
+    const taut = Math.min(1, Math.max(0, (d - L * 0.85) / (L * 0.15)));
+    col.set('#ffd98a').lerp(new THREE.Color('#ff4a2a'), taut);
+    for (let k = 0; k < ROPE_SEG; k++) {
+      bez(pa, pc, pb, k / ROPE_SEG, a);
+      bez(pa, pc, pb, (k + 1) / ROPE_SEG, b);
+      const len = a.distanceTo(b) || 0.01;
+      tmpQ.setFromUnitVectors(UP, b.clone().sub(a).normalize());
+      tmpS.set(3.4, len * 1.08, 3.4);
+      tmpM.compose(a.clone().add(b).multiplyScalar(0.5), tmpQ, tmpS);
+      ropeMesh.setMatrixAt(n, tmpM);
+      ropeMesh.setColorAt(n, col);
+      n++;
+    }
+  }
+  ropeMesh.count = n;
+  ropeMesh.instanceMatrix.needsUpdate = true;
+  if (ropeMesh.instanceColor) ropeMesh.instanceColor.needsUpdate = true;
+}
+
+// 任务提示光柱：钥匙 → 锁 → 没亮的压力板 → 出口
+const beacons = [makeBeacon('#ffe066'), makeBeacon('#ff7a7a'), makeBeacon('#ff7a7a')];
+function updateBeacons(m, t) {
+  const spots = [];
+  if (m) {
+    if (m.key && !m.key.d) {
+      if (!m.key.h) spots.push([m.key.x, m.key.y, '#ffe066']);
+      else if (mapDef.feat.lock) spots.push([mapDef.feat.lock.x, mapDef.feat.lock.y, '#ffe066']);
+    }
+    if (!m.pOpen && m.kOpen) for (const pl of m.plates || []) if (!pl.on) spots.push([pl.x, pl.y, '#ff7a7a']);
+    if (m.kOpen && m.pOpen && m.exit) spots.push([m.exit.x, m.exit.y, '#7bffb0']);
+  }
+  beacons.forEach((b, i) => {
+    const sp = spots[i];
+    b.root.visible = !!sp;
+    if (!sp) return;
+    b.root.position.set(sp[0], 0, sp[1]);
+    b.beam.material.color.set(sp[2]);
+    b.arrow.material.color.set(sp[2]);
+    b.arrow.position.y = 95 + Math.sin(t * 4 + i) * 8;
+    b.arrow.rotation.y = t * 2;
+    b.beam.material.opacity = 0.12 + 0.05 * Math.sin(t * 3 + i);
+  });
 }
 
 function updateBody(v, b, dt, t) {
@@ -818,6 +931,54 @@ export function playEvents(events) {
         }
         break;
       }
+      case 'keyPick': {
+        const p = pos(ev.id);
+        if (p) burst(p.x, p.y + 50, p.z, '#ffd23f', 20, 160, 8);
+        sfx.keyPick();
+        break;
+      }
+      case 'keyReset':
+        sfx.error();
+        break;
+      case 'unlock':
+        for (const c of ['#ffd23f', '#ffffff']) burst(ev.x, 40, ev.y, c, 30, 260, 9, 0.9);
+        ringWave(ev.x, ev.y, 140, '#ffd23f', 0.6);
+        popText(ev.x, 90, ev.y, 'UNLOCK!', '#ffd23f', 32);
+        sfx.unlock();
+        break;
+      case 'plate':
+        burst(ev.x, 12, ev.y, '#3ddc84', 14, 140, 7);
+        sfx.plate();
+        break;
+      case 'platesOpen':
+        ringWave(ev.x, ev.y, 200, '#4ff0e0', 0.7);
+        popText(ev.x, 90, ev.y, 'OPEN!', '#4ff0e0', 32);
+        sfx.unlock();
+        break;
+      case 'blink':
+        sfx.blink();
+        break;
+      case 'hang': {
+        const v = views.get(ev.id);
+        if (v) popText(v.x, 70, v.z, '抓住了!', '#ffe066', 24);
+        sfx.rope();
+        break;
+      }
+      case 'saved': {
+        const v = views.get(ev.id);
+        if (v) {
+          v.ch.bounce(8);
+          burst(v.x, 30, v.z, '#ffffff', 14, 140, 7);
+        }
+        sfx.respawn();
+        break;
+      }
+      case 'ropeSlip':
+        sfx.fall();
+        break;
+      case 'stageClear':
+        sfx.victory();
+        break;
       case 'emote':
         showEmote(ev.id, ev.i);
         sfx.emote();
@@ -993,6 +1154,13 @@ function updateCamera(dt, t, me) {
     const maxR = camR * 0.7;
     const fl = Math.hypot(focus.x, focus.z);
     if (fl > maxR) focus.multiplyScalar(maxR / fl);
+    // 闯关过关：镜头对着终点岛上欢呼的大家
+    if (s.phase === 'roundEnd' && s.settings.mode === 'rope' && s.m.exit) {
+      focus.set(s.m.exit.x, 40, s.m.exit.y);
+      dist = 520;
+      pitch = 30;
+      yaw = Math.sin(t * 0.5) * 0.6;
+    }
     // 一局结束：赢家特写 + 慢慢环绕
     if (s.phase === 'roundEnd') {
       const w = s.winner != null ? views.get(s.winner) : null;

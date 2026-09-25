@@ -372,3 +372,51 @@ export function makePodium(h, color = '#6d5fc7', rank = 0) {
   scene.add(g);
   return g;
 }
+
+// 闯关的钥匙：金色大钥匙，带一圈光
+export function makeKey() {
+  const g = new THREE.Group();
+  const gold = std('#ffcf4a', { metalness: 0.9, roughness: 0.22, emissive: '#8a5a00', emissiveIntensity: 0.5 });
+  const bow = new THREE.Mesh(new THREE.TorusGeometry(9, 3.2, 10, 24), gold);
+  bow.position.y = 10;
+  g.add(bow);
+  const gem = new THREE.Mesh(new THREE.OctahedronGeometry(4), std('#3fa7ff', { roughness: 0.1, emissive: '#1f6fff', emissiveIntensity: 0.6 }));
+  gem.position.y = 10;
+  g.add(gem);
+  const shaft = new THREE.Mesh(new THREE.CylinderGeometry(2.4, 2.4, 26, 10), gold);
+  shaft.position.y = -10;
+  g.add(shaft);
+  for (const [y, w] of [
+    [-19, 9],
+    [-13, 6],
+  ]) {
+    const tooth = new THREE.Mesh(new THREE.BoxGeometry(w, 4, 3), gold);
+    tooth.position.set(w / 2, y, 0);
+    g.add(tooth);
+  }
+  g.traverse((o) => o.isMesh && (o.castShadow = true));
+  const halo = new THREE.Mesh(new THREE.RingGeometry(16, 22, 32), new THREE.MeshBasicMaterial({ color: '#ffe066', transparent: true, opacity: 0.5, side: THREE.DoubleSide, depthWrite: false, blending: THREE.AdditiveBlending }));
+  g.add(halo);
+  const root = new THREE.Group();
+  root.add(g);
+  scene.add(root);
+  return { root, g, halo };
+}
+
+// 任务提示光柱：告诉大家下一步去哪
+export function makeBeacon(color = '#ffe066') {
+  const root = new THREE.Group();
+  const beam = new THREE.Mesh(
+    new THREE.CylinderGeometry(22, 22, 260, 20, 1, true),
+    new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.16, side: THREE.DoubleSide, depthWrite: false, blending: THREE.AdditiveBlending })
+  );
+  beam.position.y = 130;
+  root.add(beam);
+  const arrow = new THREE.Mesh(new THREE.ConeGeometry(12, 22, 4), new THREE.MeshBasicMaterial({ color }));
+  arrow.rotation.x = Math.PI;
+  root.add(arrow);
+  root.visible = false;
+  scene.add(root);
+  return { root, beam, arrow };
+}
+

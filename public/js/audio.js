@@ -198,6 +198,20 @@ export const sfx = {
     tone({ f: 75, f2: 30, dur: 0.5, type: 'sine', vol: 0.4 });
     noise({ dur: 0.5, vol: 0.25, type: 'lowpass', f: 500, f2: 60 });
   },
+  keyPick: () => arp([76, 83, 88], 0.06, { type: 'triangle', vol: 0.1 }),
+  unlock: () => {
+    arp([72, 76, 79, 84, 88], 0.07, { type: 'square', vol: 0.08 });
+    noise({ dur: 0.4, vol: 0.06, type: 'bandpass', f: 600, f2: 200, q: 3, at: 0.1 });
+  },
+  plate: () => {
+    tone({ f: 300, f2: 220, dur: 0.12, type: 'square', vol: 0.08, lp: 1200 });
+    tone({ f: 880, dur: 0.08, type: 'sine', vol: 0.06, at: 0.08 });
+  },
+  blink: () => tone({ f: 660, f2: 990, dur: 0.1, type: 'sine', vol: 0.04 }),
+  rope: () => {
+    noise({ dur: 0.25, vol: 0.08, type: 'bandpass', f: 400, f2: 900, q: 4 });
+    tone({ f: 220, f2: 180, dur: 0.2, type: 'triangle', vol: 0.06 });
+  },
   land: () => {
     tone({ f: 140, f2: 60, dur: 0.12, type: 'sine', vol: 0.12 });
     noise({ dur: 0.08, vol: 0.05, type: 'lowpass', f: 900 });

@@ -48,8 +48,16 @@ class Room {
     this.resetArena();
   }
 
+  // 当前地图：闯关模式由模式提供关卡地图，其他模式用房间设置里选的地图
   get map() {
-    return MAPS[this.settings.map];
+    return (this.m && this.m.level) || MAPS[this.settings.map];
+  }
+  // 地图变了就广播给所有人（换地图、闯关换关卡、回到大厅）
+  syncMap() {
+    const def = this.map.clientDef;
+    if (def === this.sentDef) return;
+    this.sentDef = def;
+    this.broadcast(def);
   }
   get mode() {
     return MODES[this.settings.mode];
@@ -321,7 +329,7 @@ class Room {
     if (s.map && MAPS[s.map] && s.map !== st.map) {
       st.map = s.map;
       this.resetArena();
-      this.broadcast(this.map.clientDef);
+      this.syncMap();
     }
     if (s.mode && MODES[s.mode] && s.mode !== st.mode) {
       st.mode = s.mode;
@@ -350,6 +358,7 @@ class Room {
     this.bodies = [];
     this.m = {};
     this.resetArena();
+    this.syncMap();
     for (const p of this.list()) {
       p.ready = p.bot;
       p.alive = false;
@@ -545,7 +554,9 @@ class Room {
 
   startRound() {
     const list = this.list();
+    if (this.mode.beforeRound) this.mode.beforeRound(this);
     this.resetArena();
+    this.syncMap();
     this.bodies = [];
     this.phase = 'countdown';
     this.timer = this.round > 0 && this.mode.id === 'football' ? 2 : K.COUNTDOWN;
@@ -585,6 +596,8 @@ class Room {
     p.dashCd = 0;
     p.fx = emptyFx();
     p.massMul = 1;
+    p.hanging = false;
+    p.hangT = 0;
     p.lastHitBy = null;
     p.input = { x: 0, y: 0, dash: false };
   }
@@ -633,6 +646,11 @@ class Room {
     if (mode.id === 'boss') best((p) => p.stats.dmg / 100, '🤖', '最佳输出', ' 点');
     if (mode.id === 'crown') best((p) => p.stats.crown, '👑', '戴冠最久', ' 秒');
     if (mode.id === 'potato') best((p) => p.stats.passes, '💣', '传球高手', ' 次');
+    if (mode.id === 'rope') {
+      best((p) => p.stats.keys, '🔑', '开锁达人', ' 把');
+      best((p) => p.stats.plates, '🟢', '机关达人', ' 次');
+      best((p) => p.stats.saves, '🪢', '救援高手', ' 次');
+    }
     if (list.length > 1) best((p) => p.stats.falls, '🛡️', '不倒翁', ' 次掉落', 0, true);
     this.winnerTeam = extra.winnerTeam !== undefined ? extra.winnerTeam : this.winnerTeam;
     this.results = {
@@ -686,7 +704,7 @@ class Room {
       this.roundTime += dt;
       this.matchTime += dt;
       this.updateArena(dt);
-      if (this.settings.items) {
+      if (this.settings.items && !mode.noItems) {
         this.itemTimer -= dt;
         if (this.itemTimer <= 0) {
           this.itemTimer = rand(3.5, 5.5);
@@ -726,6 +744,7 @@ class Room {
 
     this.collide(active);
     this.applyBumpers(active);
+    if (mode.constrain) mode.constrain(this, active, dt, playing);
     this.updateTornados(active, dt);
     this.updateTraps(active, dt);
     this.updateMeteors(active, dt);
@@ -751,8 +770,9 @@ class Room {
   movePlayer(p, dt, playing) {
     const ctrl = controllable(p);
     // 一局结束后的停顿里不再接受操作，大家滑行停下（否则机器人会沿着最后的方向一直走）
-    let ix = ctrl && playing ? p.input.x : 0;
-    let iy = ctrl && playing ? p.input.y : 0;
+    // 被绳子吊在边上的时候也动不了，只能等队友拉上来
+    let ix = ctrl && playing && !p.hanging ? p.input.x : 0;
+    let iy = ctrl && playing && !p.hanging ? p.input.y : 0;
     const il = Math.hypot(ix, iy);
     if (il > 1) {
       ix /= il;
@@ -762,7 +782,7 @@ class Room {
     p.vx += ix * accel * dt;
     p.vy += iy * accel * dt;
     p.dashCd = Math.max(0, p.dashCd - dt);
-    if (p.input.dash && p.dashCd <= 0 && playing && ctrl) {
+    if (p.input.dash && p.dashCd <= 0 && playing && ctrl && !p.hanging) {
       let dx = ix;
       let dy = iy;
       if (Math.hypot(dx, dy) < 0.1) {
@@ -983,8 +1003,9 @@ class Room {
   updateFalls(active, dt, playing) {
     const mode = this.mode;
     for (const b of active) {
-      if (this.supported(b.x, b.y)) continue;
+      if (this.supported(b.x, b.y) || b.hanging) continue;
       b.falling = 0.6;
+      b.hanging = false;
       if (b.kind === 'player') {
         b.stats.falls++;
         this.event({ type: 'fall', id: b.id });
@@ -1027,7 +1048,7 @@ class Room {
   }
 
   respawnPlayer(p) {
-    let pos = null;
+    let pos = this.mode.respawnPos ? this.mode.respawnPos(this, p) : null;
     if (this.mode.teams && this.map.goal) {
       // 足球：在自己半场复活
       const side = p.team === 0 ? -1 : 1;
@@ -1094,6 +1115,7 @@ class Room {
         r: radiusOf(p),
         alive: p.alive,
         falling: p.falling > 0,
+        hang: p.hanging ? 1 : 0,
         exploded: p.exploded,
         respawn: r1(p.respawn),
         out: p.out,
