@@ -755,13 +755,21 @@ $('resBoard').onclick = () => openBoard();
 let chatLines = [];
 let lastChatN = 0;
 
+// 聊天记录默认停在最新一条；自己往上翻了就不自动滚。
+// 进房时聊天记录是在大厅还没显示（高度为 0）时收到的，所以显示出来 / 尺寸变化时再滚一次
+let chatStick = true;
+$('chatLog').addEventListener('scroll', (e) => {
+  const el = e.target;
+  if (el.clientHeight) chatStick = el.scrollHeight - el.scrollTop - el.clientHeight < 30;
+});
+new ResizeObserver(() => chatStick && ($('chatLog').scrollTop = $('chatLog').scrollHeight)).observe($('chatLog'));
+
 function renderChat() {
   const el = $('chatLog');
-  const atBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 30;
   el.innerHTML = chatLines
     .map((c) => (c.sys ? `<div class="sys">${esc(chatText(c))}</div>` : `<div><b style="color:${esc(colorOf(c.id))}">${esc(c.name)}</b>${esc(c.text)}</div>`))
     .join('');
-  if (atBottom) el.scrollTop = el.scrollHeight;
+  if (chatStick) el.scrollTop = el.scrollHeight;
 }
 
 // 两侧面板之间露出来的区域，决定 3D 展示台 / 领奖台的镜头远近和偏移
@@ -789,7 +797,7 @@ function renderLobby() {
     $('mapCards'),
     MAP_IDS.map((id) => {
       const mp = MAPS[id];
-      return `<button class="card map-card ${st.map === id ? 'on' : ''}" data-map="${id}" style="background:linear-gradient(135deg,${mp.grad[0]},${mp.grad[1]})"><b>${mp.name}</b><small>${mp.desc}</small><span class="ico">${mp.icon}</span></button>`;
+      return `<button class="card map-card ${st.map === id ? 'on' : ''}" data-map="${id}" style="background:linear-gradient(135deg,${mp.grad[0]},${mp.grad[1]})"><span class="ico">${mp.icon}</span><b>${mp.name}</b><small>${mp.desc}</small></button>`;
     }).join('')
   );
   setHTML(
@@ -1727,6 +1735,8 @@ window.addEventListener('pointerdown', unlockOnce);
 window.addEventListener('keydown', unlockOnce);
 
 document.documentElement.lang = lang === 'en' ? 'en' : 'zh-CN';
+// 手机上没有"回车"，聊天框提示改短一点（要在 applyStatic 记录原文之前改）
+if (isTouch) $('chatInput').setAttribute('placeholder', '说点什么…');
 applyStatic();
 updateLangButton();
 applyQuality();

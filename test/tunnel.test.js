@@ -32,7 +32,8 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
   if (process.platform !== 'win32') {
     console.log('自动下载 cloudflared');
     delete process.env.CLOUDFLARED_PATH;
-    const script = `#!/bin/sh\n"${process.execPath}" "${FAKE}" "$@"\n`;
+    // 用 exec 让 node 顶替 sh，关闭隧道时不会留下孤儿进程
+    const script = `#!/bin/sh\nexec "${process.execPath}" "${FAKE}" "$@"\n`;
     let hits = 0;
     const srv = http.createServer((req, res) => {
       hits++;

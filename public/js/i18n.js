@@ -50,6 +50,8 @@ const EN = {
   移除机器人: 'Remove bot',
   表情: 'Emotes',
   '说点什么…（回车发送）': 'Say something… (Enter to send)',
+  '说点什么…': 'Say something…',
+  房间码: 'Room code',
   发送: 'Send',
   '👕 换装': '👕 Outfit',
   开始游戏: 'Start Game',
